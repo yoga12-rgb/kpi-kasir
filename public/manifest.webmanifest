@@ -1,0 +1,19 @@
+{
+  "name": "KPI Kasir Rajaklana",
+  "short_name": "KPI Kasir",
+  "description": "Aplikasi penilaian & ranking performa kasir Rajaklana",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#eab308",
+  "orientation": "portrait",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1114x1115",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

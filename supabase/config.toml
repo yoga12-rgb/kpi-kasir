@@ -1,0 +1,40 @@
+# Supabase configuration — Sesuai development-maintenance-plan.md §2
+project_id = "kpi-kasir-rajaklana"
+
+[api]
+enabled = true
+port = 55421
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 55422
+major_version = 15
+
+[studio]
+enabled = true
+port = 55423
+
+[local_smtp]
+enabled = true
+port = 55424
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+# Google OAuth diaktifkan via Supabase Dashboard / CLI saat client ID & secret tersedia.
+# [auth.external.google]
+# enabled = false
+# client_id = ""
+# client_secret = ""

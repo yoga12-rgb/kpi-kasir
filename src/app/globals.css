@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #eab308;
+  --color-surface: #0b0f14;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-surface-50 text-surface-900 antialiased;
+  overscroll-behavior-y: none;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 text-surface-900 hover:bg-primary-400;
+  }
+
+  .btn-secondary {
+    @apply border border-surface-300 bg-white text-surface-700 hover:bg-surface-100;
+  }
+
+  .btn-danger {
+    @apply bg-danger-500 text-white hover:bg-danger-600;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-surface-300 bg-white px-4 py-2.5 text-sm text-surface-900 placeholder:text-surface-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-50;
+  }
+
+  .label {
+    @apply mb-1 block text-sm font-medium text-surface-700;
+  }
+
+  .card {
+    @apply rounded-2xl border border-surface-200 bg-white p-4 shadow-sm;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .toast-enter {
+    animation: toast-in 180ms ease-out both;
+  }
+
+  .toast-exit {
+    animation: toast-out 160ms ease-in both;
+  }
+
+  .assessment-slider {
+    appearance: none;
+    width: 100%;
+    height: 0.5rem;
+    cursor: pointer;
+    border-radius: 9999px;
+    background: #39434f;
+    accent-color: var(--color-primary);
+  }
+
+  .assessment-slider:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .assessment-slider::-webkit-slider-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    appearance: none;
+    border: 2px solid #11161d;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  }
+
+  .assessment-slider::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid #11161d;
+    border-radius: 9999px;
+    background: var(--color-primary);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.98);
+  }
+}
+
+@keyframes rank-gold-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgb(234 179 8 / 25%),
+      0 0 12px rgb(234 179 8 / 20%);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 3px rgb(250 204 21 / 35%),
+      0 0 24px rgb(245 158 11 / 42%);
+  }
+}
+
+@layer components {
+  .rank-frame {
+    @apply flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full border bg-surface-100 p-1;
+  }
+
+  .rank-frame-gold {
+    @apply border-2 border-amber-300 bg-amber-950/30;
+    animation: rank-gold-pulse 2.8s ease-in-out infinite;
+  }
+
+  .rank-frame-silver {
+    @apply border-2 border-slate-300 bg-slate-700/30 shadow-[0_0_0_3px_rgb(203_213_225_/_14%)];
+  }
+
+  .rank-frame-bronze {
+    @apply border-2 border-orange-500/90 bg-orange-950/25 shadow-[0_0_0_3px_rgb(249_115_22_/_16%)];
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter,
+  .toast-exit,
+  .rank-frame-gold {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}
+
+@layer utilities {
+  /* Existing components use bg-white for their surface; keep that API dark-themed. */
+  .bg-white {
+    background-color: #11161d !important;
+  }
+}

@@ -1,0 +1,13 @@
+# Environment lokal — service pendukung development
+# Supabase lokal dikelola via `supabase start` (lihat supabase/config.toml)
+# Service di bawah ini hanya pendukung opsional (mis. mailpit untuk test email invite).
+version: "3.9"
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: kpi-kasir-mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    restart: unless-stopped

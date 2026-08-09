@@ -1,0 +1,19 @@
+# INTEGRATED AGENT SYSTEM RULES
+
+## 1. Graphify (Codebase Knowledge Graph)
+
+- Sebelum menganalisis atau menjawab pertanyaan arsitektur proyek yang kompleks, periksa knowledge graph di `graphify-out/graph.json`.
+- Gunakan perintah terminal `graphify query "<topik>"` atau `graphify god-nodes` untuk memetakan alur dan hubungan antar file/modul dengan efisien.
+
+## 2. Agent-Skills (Dynamic Tool & Skill Discovery)
+
+- Manfaatkan tool dari `agent-skills` MCP server untuk mengeksekusi dan membaca skill kustom yang berada di folder skill global (`C:/Users/yogas/.gemini/config/skills`).
+
+## 3. Superpowers (Disciplined Development Workflow)
+
+Setiap kali melakukan tugas coding atau pembuatan fitur, ikuti alur kerja disiplin berikut:
+
+1. **Brainstorm & Spec**: Diskusikan ide dasar dan tetapkan spesifikasi sebelum menulis kode.
+2. **Plan First**: Susun langkah-langkah kerja secara terstruktur.
+3. **Test-Driven Development (TDD)**: Buat test lebih dahulu (Red), jalankan hingga lulus (Green), lalu lakukan refactoring.
+4. **Code Review**: Lakukan peninjauan ulang kualitas dan keamanan kode sebelum menyelesaikan tugas.
