@@ -31,7 +31,6 @@ export function CategoryForm() {
       const data = await res.json();
       if (!res.ok) {
         setError(getErrorMessage(data.error, 'Gagal menyimpan'));
-        setLoading(false);
         return;
       }
 
@@ -40,6 +39,7 @@ export function CategoryForm() {
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
       setLoading(false);
     }
   }

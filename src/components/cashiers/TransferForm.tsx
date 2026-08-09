@@ -35,13 +35,13 @@ export function TransferForm({ cashierId, currentOutletId, outlets }: { cashierI
       const data = await res.json();
       if (!res.ok) {
         setError(getErrorMessage(data.error, 'Gagal mutasi'));
-        setLoading(false);
         return;
       }
 
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
       setLoading(false);
     }
   }

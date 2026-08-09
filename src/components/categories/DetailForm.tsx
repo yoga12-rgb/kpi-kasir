@@ -40,7 +40,6 @@ export function DetailForm({ categoryId }: { categoryId: string }) {
           ? 'Data tidak valid. Detail skala wajib punya skala maks; detail deduksi wajib punya poin.'
           : getErrorMessage(data.error, 'Gagal menyimpan');
         setError(msg);
-        setLoading(false);
         return;
       }
 
@@ -50,6 +49,7 @@ export function DetailForm({ categoryId }: { categoryId: string }) {
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
       setLoading(false);
     }
   }

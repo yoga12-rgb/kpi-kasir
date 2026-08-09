@@ -31,7 +31,6 @@ export function PeriodForm() {
       const data = await res.json();
       if (!res.ok) {
         setError(getErrorMessage(data.error, 'Gagal membuka periode'));
-        setLoading(false);
         return;
       }
 
@@ -39,6 +38,7 @@ export function PeriodForm() {
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
       setLoading(false);
     }
   }
