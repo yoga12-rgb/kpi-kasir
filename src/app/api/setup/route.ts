@@ -80,12 +80,12 @@ async function handlePOST(request: Request) {
     p_claim_id: claimId,
   });
   if (claimError) {
-    logSetupError('reserve_setup', claimError);
     const message = claimError.message.toLowerCase();
     if (message.includes('sudah selesai')) return setupError('Setup sudah selesai', 409);
     if (message.includes('sedang diproses') || message.includes('terlalu banyak')) {
       return setupError('Setup sedang dibatasi, coba lagi nanti', 429);
     }
+    logSetupError('reserve_setup', claimError);
     return setupError('Setup tidak dapat dimulai', 500);
   }
 
