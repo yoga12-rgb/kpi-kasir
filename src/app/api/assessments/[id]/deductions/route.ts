@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const deductionSchema = z.object({
   note: z.string().optional().nullable(),
@@ -15,7 +16,7 @@ const deductionSchema = z.object({
  *   (detail_config_history → detail.deduction_points) — non-retroaktif.
  * - Trigger akan menghitung ulang skor normalisasi & skor periode.
  */
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requirePermission('assessment');
   const { id } = await params;
   const body = await request.json().catch(() => null);
@@ -37,29 +38,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Assessment tidak ditemukan' }, { status: 404 });
   }
 
-  const detail = assessment.detail as unknown as {
-    type: 'scale' | 'deduction';
-    deduction_points: number | null;
-  };
   const period = assessment.period as unknown as { status: 'open' | 'closed' };
 
   if (period.status !== 'open') {
     return NextResponse.json({ error: 'Periode sudah ditutup' }, { status: 400 });
   }
 
-  if (detail.type !== 'deduction') {
-    return NextResponse.json({ error: 'Detail ini bertipe skala' }, { status: 400 });
-  }
-
-  // Konfigurasi poin per periode (non-retroaktif)
+  // Konfigurasi poin per periode berasal dari snapshot.
   const { data: historyConfig } = await supabase
     .from('detail_config_history')
-    .select('deduction_points')
+    .select('deduction_points, detail_type')
     .eq('detail_id', assessment.detail_id)
     .eq('period_id', assessment.period_id)
     .maybeSingle();
 
-  const points = historyConfig?.deduction_points ?? detail.deduction_points;
+  if (!historyConfig || historyConfig.detail_type !== 'deduction') {
+    return NextResponse.json(
+      { error: 'Detail tidak termasuk konfigurasi snapshot periode ini' },
+      { status: 400 }
+    );
+  }
+
+  const points = historyConfig.deduction_points;
 
   if (!points || points <= 0) {
     return NextResponse.json({ error: 'Konfigurasi poin deduksi tidak valid' }, { status: 400 });
@@ -81,3 +81,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ deduction: data }, { status: 201 });
 }
+
+export const POST = withApiRoute(handlePOST);

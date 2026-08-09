@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 
-const BUCKET = 'cashier-photos';
+function avatarProxyUrl(path: string): string {
+  return `/api/storage/cashier-avatar?path=${encodeURIComponent(path)}`;
+}
 
-export function avatarPath(cashierId: string, ext: string): string {
-  return `cashier/${cashierId}/avatar.${ext}`;
+export function avatarPath(cashierId: string, ext: string, version: string): string {
+  return `cashier/${cashierId}/avatar-${version}.${ext}`;
 }
 
 /**
@@ -11,16 +13,11 @@ export function avatarPath(cashierId: string, ext: string): string {
  * Return null jika kasir tidak punya avatar.
  */
 export async function getCashierAvatarUrl(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   avatarPathValue: string | null | undefined
 ): Promise<string | null> {
   if (!avatarPathValue) return null;
-
-  const { data } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(avatarPathValue, 3600); // 1 jam
-
-  return data?.signedUrl ?? null;
+  return avatarProxyUrl(avatarPathValue);
 }
 
 /**
@@ -28,7 +25,7 @@ export async function getCashierAvatarUrl(
  * assessment, mentoring) agar tidak N+1 request per kasir.
  */
 export async function getCashierAvatarUrls(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   paths: (string | null | undefined)[]
 ): Promise<Map<string, string | null>> {
   const result = new Map<string, string | null>();
@@ -36,12 +33,8 @@ export async function getCashierAvatarUrls(
 
   if (uniquePaths.length === 0) return result;
 
-  const { data } = await supabase.storage.from(BUCKET).createSignedUrls(uniquePaths, 3600);
-
-  for (const signed of data ?? []) {
-    if (signed.path) {
-      result.set(signed.path, signed.signedUrl ?? null);
-    }
+  for (const path of uniquePaths) {
+    result.set(path, avatarProxyUrl(path));
   }
 
   return result;

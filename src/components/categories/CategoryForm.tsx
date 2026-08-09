@@ -30,7 +30,7 @@ export function CategoryForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Gagal menyimpan');
+        setError(getErrorMessage(data.error, 'Gagal menyimpan'));
         setLoading(false);
         return;
       }

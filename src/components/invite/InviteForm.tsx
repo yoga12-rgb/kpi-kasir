@@ -44,7 +44,7 @@ export function InviteForm({ branches }: { branches: BranchOption[] }) {
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal membuat undangan', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal membuat undangan'), variant: 'error' });
         setLoading(false);
         return;
       }

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, requirePermission } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const updateSchema = z.object({
   name: z.string().trim().min(2).max(100),
 });
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   await requirePermission('cashiers.update');
   const { id } = await params;
   const body = await request.json().catch(() => null);
@@ -34,22 +35,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ cashier: data });
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+async function handleDELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireAdmin();
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
+  const body = await request.json().catch(() => null);
+  const reason = typeof body?.reason === 'string' ? body.reason : 'Dinonaktifkan melalui panel admin';
 
-  // Soft delete: nonaktifkan kasir
-  const { data, error } = await supabase
-    .from('cashier')
-    .update({ is_active: false })
-    .eq('id', id)
-    .select()
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('set_cashier_status_atomic', {
+    p_cashier_id: id,
+    p_is_active: false,
+    p_reason: reason,
+    p_actor_id: profile.id,
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  if (!data) {
-    return NextResponse.json({ error: 'Kasir tidak ditemukan' }, { status: 404 });
-  }
   return NextResponse.json({ cashier: data });
 }
+
+export const PATCH = withApiRoute(handlePATCH);
+export const DELETE = withApiRoute(handleDELETE);

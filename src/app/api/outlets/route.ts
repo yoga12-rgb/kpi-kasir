@@ -2,20 +2,37 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
+import { escapeIlike, getPageRange, getTotalPages } from '@/lib/pagination';
 
 const outletSchema = z.object({
   branchId: z.string().uuid(),
   name: z.string().min(2),
 });
 
-export async function GET(request: Request) {
+const listQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  page: z.coerce.number().int().min(1).max(10000).default(1),
+  branchId: z.string().uuid().optional(),
+  q: z.string().trim().max(100).optional(),
+});
+
+async function handleGET(request: Request) {
   const profile = await requirePermission('outlets.view');
-  const { searchParams } = new URL(request.url);
-  const branchId = searchParams.get('branchId');
+  const searchParams = new URL(request.url).searchParams;
+  const parsed = listQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
+  if (!parsed.success) return NextResponse.json({ error: 'Parameter outlet tidak valid' }, { status: 400 });
+  const { limit, page, branchId, q } = parsed.data;
+  const { from, to } = getPageRange(page, limit);
 
   const supabase = await createClient();
-  let query = supabase.from('outlet').select('*, branch(name)').order('name');
+  let query = supabase
+    .from('outlet')
+    .select('*, branch(name)', { count: 'exact' })
+    .order('name')
+    .range(from, to);
   if (branchId) query = query.eq('branch_id', branchId);
+  if (q) query = query.ilike('name', `%${escapeIlike(q)}%`);
   if (profile.role !== 'admin') {
     const { data: userBranches } = await supabase
       .from('user_branch')
@@ -27,11 +44,18 @@ export async function GET(request: Request) {
     );
   }
 
-  const { data } = await query;
-  return NextResponse.json({ outlets: data ?? [] });
+  const { data, count } = await query;
+  const totalPages = getTotalPages(count, limit);
+  return NextResponse.json({
+    outlets: data ?? [],
+    page,
+    limit,
+    total: count ?? 0,
+    hasMore: page < totalPages,
+  });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const profile = await requirePermission('outlets.create');
   const body = await request.json().catch(() => null);
   const parsed = outletSchema.safeParse(body);
@@ -65,3 +89,6 @@ export async function POST(request: Request) {
     { status: 201 }
   );
 }
+
+export const GET = withApiRoute(handleGET);
+export const POST = withApiRoute(handlePOST);

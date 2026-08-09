@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createInvite } from '@/lib/invites';
-import { requireUser } from '@/lib/auth/guards';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createInvite, decodeInviteCursor, listInvites } from '@/lib/invites';
+import { requireAdmin } from '@/lib/auth/guards';
+import { withApiRoute } from '@/lib/api/route';
 
 const inviteSchema = z.object({
   inviteName: z.string().trim().min(2).max(100),
@@ -11,11 +11,8 @@ const inviteSchema = z.object({
   expiresInDays: z.number().int().min(1).max(30).optional(),
 });
 
-export async function POST(request: Request) {
-  const user = await requireUser();
-  if (user.role !== 'admin') {
-    return NextResponse.json({ error: 'Hanya admin yang bisa membuat undangan' }, { status: 403 });
-  }
+async function handlePOST(request: Request) {
+  const user = await requireAdmin();
 
   const body = await request.json().catch(() => null);
   const parsed = inviteSchema.safeParse(body);
@@ -45,17 +42,34 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
-  const user = await requireUser();
-  if (user.role !== 'admin') {
-    return NextResponse.json({ error: 'Hanya admin' }, { status: 403 });
+async function handleGET(request: Request) {
+  await requireAdmin();
+  const { searchParams } = new URL(request.url);
+  const limit = Number(searchParams.get('limit') ?? '20');
+  const search = searchParams.get('search') ?? '';
+  const cursorValue = searchParams.get('cursor');
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+    return NextResponse.json({ error: 'Limit tidak valid' }, { status: 400 });
   }
 
-  const supabase = await createAdminClient();
-  const { data } = await supabase
-    .from('invite')
-    .select('*')
-    .order('created_at', { ascending: false });
+  if (cursorValue && !decodeInviteCursor(cursorValue)) {
+    return NextResponse.json({ error: 'Cursor tidak valid' }, { status: 400 });
+  }
 
-  return NextResponse.json({ invites: data ?? [] });
+  try {
+    const result = await listInvites({
+      limit,
+      search,
+      cursor: decodeInviteCursor(cursorValue),
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Gagal mengambil daftar invite';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
+
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'invite-create', limit: 30, windowMs: 10 * 60_000 },
+});
+export const GET = withApiRoute(handleGET);

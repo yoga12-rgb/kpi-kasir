@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Home, ClipboardList, Trophy, Menu, Bell, LogOut } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { hasPermission, type Permission } from '@/lib/auth/permissions';
@@ -33,6 +33,33 @@ export function AppShellClient({
   const visibleNavItems = navItems.filter(
     (item) => !item.permission || hasPermission(permissions, item.permission)
   );
+  const canNotifications = hasPermission(permissions, 'notifications');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!canNotifications) return;
+    const controller = new AbortController();
+
+    fetch('/api/notifications?limit=1', { cache: 'no-store', signal: controller.signal })
+      .then((response) => response.json().catch(() => null))
+      .then((payload: { unreadCount?: unknown } | null) => {
+        if (typeof payload?.unreadCount === 'number') setUnreadCount(Math.max(0, payload.unreadCount));
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      });
+
+    const handleUnreadCount = (event: Event) => {
+      const count = (event as CustomEvent<{ count?: unknown }>).detail?.count;
+      if (typeof count === 'number') setUnreadCount(Math.max(0, count));
+    };
+    window.addEventListener('notifications:unread-count', handleUnreadCount);
+
+    return () => {
+      controller.abort();
+      window.removeEventListener('notifications:unread-count', handleUnreadCount);
+    };
+  }, [canNotifications]);
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
@@ -45,20 +72,58 @@ export function AppShellClient({
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-app border-x border-surface-200 bg-surface-50">
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-surface-200 bg-white px-4">
-        <Link href="/dashboard" className="flex items-center gap-2">
+    <div className="mx-auto flex min-h-screen w-full max-w-app flex-col border-x border-surface-200 bg-surface-50 md:max-w-7xl md:flex-row">
+      <aside className="hidden shrink-0 border-r border-surface-200 bg-white md:flex md:w-60 md:flex-col">
+        <Link href="/dashboard" prefetch className="flex h-16 items-center gap-2 border-b border-surface-200 px-5">
           <BrandLogo size={32} alt="" priority />
           <span className="font-semibold text-surface-900">KPI Kasir</span>
         </Link>
-        <nav className="flex items-center gap-2">
-          {hasPermission(permissions, 'notifications') && (
+        <nav aria-label="Navigasi utama" className="flex-1 space-y-1 p-3">
+          {visibleNavItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex min-w-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  active
+                    ? 'bg-primary-50 font-semibold text-primary-700'
+                    : 'text-surface-500 hover:bg-surface-100 hover:text-surface-900'
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-surface-200 bg-white px-4 md:h-16 md:px-6">
+          <Link href="/dashboard" prefetch className="flex min-w-0 items-center gap-2 md:hidden">
+            <BrandLogo size={32} alt="" priority />
+            <span className="truncate font-semibold text-surface-900">KPI Kasir</span>
+          </Link>
+          <span className="hidden text-sm font-medium text-surface-500 md:block">Area kerja</span>
+          <nav aria-label="Aksi akun" className="ml-auto flex items-center gap-2">
+          {canNotifications && (
             <Link
               href="/notifications"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-surface-600 hover:bg-surface-100"
+              prefetch
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-surface-600 hover:bg-surface-100"
               aria-label="Notifikasi"
             >
               <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
           )}
           <button
@@ -70,38 +135,41 @@ export function AppShellClient({
             Keluar
           </button>
         </nav>
-      </header>
+        </header>
 
-      <main data-page-content className="pb-20">
-        {children}
-      </main>
+        <main data-page-content className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
+          {children}
+        </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-app border-t border-surface-200 bg-white">
-        <div
-          className="grid"
-          style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
-        >
-          {visibleNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors',
-                  active
-                    ? 'font-semibold text-primary-600'
-                    : 'text-surface-500 hover:text-surface-900'
-                )}
-              >
-                <Icon className={cn('h-5 w-5', active ? 'text-primary-600' : 'text-surface-500')} />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+        <nav aria-label="Navigasi utama" className="fixed inset-x-0 bottom-0 z-40 mx-auto border-t border-surface-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+          <div
+            className="grid min-h-16"
+            style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
+          >
+            {visibleNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  prefetch
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium transition-colors',
+                    active
+                      ? 'font-semibold text-primary-600'
+                      : 'text-surface-500 hover:text-surface-900'
+                  )}
+                >
+                  <Icon className={cn('h-5 w-5 shrink-0', active ? 'text-primary-600' : 'text-surface-500')} />
+                  <span className="max-w-full truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

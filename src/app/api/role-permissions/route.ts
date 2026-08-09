@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { CONFIGURABLE_PERMISSIONS } from '@/lib/auth/permissions';
+import { withApiRoute } from '@/lib/api/route';
 
 const configurableRoles = ['manager', 'supervisor'] as const;
 const permissionSchema = z.enum(CONFIGURABLE_PERMISSIONS);
@@ -12,7 +13,7 @@ const updateSchema = z.object({
   enabled: z.boolean(),
 });
 
-export async function GET() {
+async function handleGET() {
   await requireAdmin();
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -37,7 +38,7 @@ export async function GET() {
   return NextResponse.json({ roles });
 }
 
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
   await requireAdmin();
   const body = await request.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
@@ -58,3 +59,6 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ permission: data });
 }
+
+export const GET = withApiRoute(handleGET);
+export const PATCH = withApiRoute(handlePATCH);

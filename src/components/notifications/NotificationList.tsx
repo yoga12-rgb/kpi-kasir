@@ -1,19 +1,42 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Bell, AlertTriangle, Info } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Bell,
+  CheckCheck,
+  Info,
+  LoaderCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { Card } from '@/components/ui/Card';
-import { Spinner } from '@/components/ui/Feedback';
+import Button from '@/components/ui/Button';
+import { EmptyState, ListSkeleton } from '@/components/ui/Feedback';
 import { formatDateTime } from '@/lib/utils';
+
+const PAGE_SIZE = 25;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 interface NotificationItem {
   id: string;
   type: string;
   title: string;
   body: string;
+  payload: Record<string, unknown> | null;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  period_id?: string | null;
   is_read: boolean;
   created_at: string;
+}
+
+interface NotificationPage {
+  notifications: NotificationItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  unreadCount: number;
 }
 
 function getNotificationIcon(type: string) {
@@ -40,72 +63,267 @@ function getNotificationIcon(type: string) {
   }
 }
 
+function getApiError(payload: unknown, fallback: string) {
+  if (!payload || typeof payload !== 'object' || !('error' in payload)) return fallback;
+  const error = (payload as { error?: unknown }).error;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+  }
+  return fallback;
+}
+
+function validId(value: unknown): value is string {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+}
+
+function payloadId(notification: NotificationItem, key: string) {
+  const value = notification.payload?.[key];
+  return validId(value) ? value : null;
+}
+
+function getNotificationHref(notification: NotificationItem) {
+  const entityId = validId(notification.entity_id)
+    ? notification.entity_id
+    : payloadId(notification, 'cashier_id');
+  if (!entityId) return null;
+
+  if (notification.type === 'reminder_unassessed') return `/assessment/${entityId}`;
+  if (notification.type === 'low_score_alert') return `/cashiers/${entityId}`;
+  if (notification.entity_type === 'cashier') return `/cashiers/${entityId}`;
+  if (notification.entity_type === 'outlet') return `/outlets/${entityId}`;
+  return null;
+}
+
+function publishUnreadCount(count: number) {
+  window.dispatchEvent(new CustomEvent('notifications:unread-count', { detail: { count } }));
+}
+
+async function readPage(cursor: string | null, signal?: AbortSignal): Promise<NotificationPage> {
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+  if (cursor) params.set('cursor', cursor);
+
+  const response = await fetch(`/api/notifications?${params.toString()}`, {
+    cache: 'no-store',
+    signal,
+  });
+  const payload = (await response.json().catch(() => null)) as Partial<NotificationPage> & {
+    error?: unknown;
+  };
+  if (!response.ok) throw new Error(getApiError(payload, 'Gagal memuat notifikasi'));
+
+  return {
+    notifications: Array.isArray(payload.notifications) ? payload.notifications : [],
+    nextCursor: typeof payload.nextCursor === 'string' ? payload.nextCursor : null,
+    hasMore: payload.hasMore === true,
+    unreadCount: typeof payload.unreadCount === 'number' ? payload.unreadCount : 0,
+  };
+}
+
 export function NotificationList() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [markingAll, setMarkingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  async function load() {
+  function updateUnreadCount(count: number) {
+    const safeCount = Math.max(0, count);
+    setUnreadCount(safeCount);
+    publishUnreadCount(safeCount);
+  }
+
+  const loadInitial = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/notifications', { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? 'Gagal memuat');
-        return;
-      }
-      setNotifications(data.notifications ?? []);
-    } catch {
-      setError('Gagal memuat notifikasi');
+      const page = await readPage(null, signal);
+      if (signal?.aborted) return;
+      setNotifications(page.notifications);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+      updateUnreadCount(page.unreadCount);
+    } catch (caught) {
+      if (caught instanceof Error && caught.name === 'AbortError') return;
+      setError(caught instanceof Error ? caught.message : 'Gagal memuat notifikasi');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadInitial(controller.signal);
+    return () => controller.abort();
+  }, [loadInitial]);
+
+  async function loadMore() {
+    if (!nextCursor || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const page = await readPage(nextCursor);
+      setNotifications((current) => [...current, ...page.notifications]);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+      updateUnreadCount(page.unreadCount);
+    } catch (caught) {
+      setLoadMoreError(caught instanceof Error ? caught.message : 'Gagal memuat lebih banyak');
+    } finally {
+      setLoadingMore(false);
     }
   }
 
-  useEffect(() => {
-    load();
-  }, []);
-
   async function markRead(id: string) {
-    await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    router.refresh();
+    const response = await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
+
+    setNotifications((current) =>
+      current.map((item) => (item.id === id ? { ...item, is_read: true } : item))
+    );
+    setUnreadCount((current) => {
+      const next = Math.max(0, current - 1);
+      publishUnreadCount(next);
+      return next;
+    });
   }
 
-  if (loading)
+  async function openNotification(notification: NotificationItem) {
+    setActionId(notification.id);
+    setError(null);
+    try {
+      if (!notification.is_read) await markRead(notification.id);
+      const href = getNotificationHref(notification);
+      if (href) router.push(href);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Gagal membuka notifikasi');
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function markAllRead() {
+    if (unreadCount === 0 || markingAll) return;
+    setMarkingAll(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/notifications/read-all', { method: 'POST' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
+      setNotifications((current) => current.map((item) => ({ ...item, is_read: true })));
+      updateUnreadCount(0);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Gagal menandai notifikasi');
+    } finally {
+      setMarkingAll(false);
+    }
+  }
+
+  if (loading) return <ListSkeleton count={4} />;
+
+  if (error && notifications.length === 0) {
     return (
-      <div className="flex justify-center py-8">
-        <Spinner />
+      <div className="space-y-3 py-8 text-center">
+        <p className="text-sm text-danger-600">{error}</p>
+        <Button type="button" variant="secondary" size="sm" onClick={() => void loadInitial()}>
+          <RefreshCw className="mr-1.5 h-4 w-4" />
+          Coba lagi
+        </Button>
       </div>
     );
-
-  if (error) return <p className="py-8 text-center text-sm text-danger-600">{error}</p>;
-
-  if (notifications.length === 0) {
-    return <p className="py-8 text-center text-sm text-surface-500">Belum ada notifikasi.</p>;
   }
 
   return (
-    <div className="space-y-2">
-      {notifications.map((n) => (
-        <Card
-          key={n.id}
-          className={`flex cursor-pointer gap-3 transition-colors ${n.is_read ? '' : 'border-primary-200 bg-primary-50/50'}`}
-          onClick={() => !n.is_read && markRead(n.id)}
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-surface-500" aria-live="polite">
+          {unreadCount > 0 ? `${unreadCount} belum dibaca` : 'Semua sudah dibaca'}
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={unreadCount === 0 || markingAll}
+          onClick={() => void markAllRead()}
+          aria-label="Tandai semua notifikasi sudah dibaca"
         >
-          {getNotificationIcon(n.type)}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-medium text-surface-900">{n.title}</p>
-              {!n.is_read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary-600" />}
-            </div>
-            <p className="mt-0.5 text-sm text-surface-600">{n.body}</p>
-            <p className="mt-1 text-xs text-surface-400">{formatDateTime(n.created_at)}</p>
-          </div>
-        </Card>
-      ))}
+          {markingAll ? (
+            <LoaderCircle className="mr-1.5 h-4 w-4 animate-spin" />
+          ) : (
+            <CheckCheck className="mr-1.5 h-4 w-4" />
+          )}
+          Tandai semua
+        </Button>
+      </div>
+
+      {error && <p className="text-sm text-danger-600">{error}</p>}
+
+      {notifications.length === 0 ? (
+        <EmptyState
+          icon={<Bell className="h-7 w-7" />}
+          title="Belum ada notifikasi"
+          description="Reminder dan alert baru akan muncul di sini."
+        />
+      ) : (
+        <div className="space-y-2">
+          {notifications.map((notification) => {
+            const href = getNotificationHref(notification);
+            const isOpening = actionId === notification.id;
+            return (
+              <Card
+                key={notification.id}
+                className={notification.is_read ? '' : 'border-primary-200 bg-primary-50/50'}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  onClick={() => void openNotification(notification)}
+                  disabled={isOpening}
+                >
+                  {getNotificationIcon(notification.type)}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-surface-900">{notification.title}</span>
+                      {!notification.is_read && (
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-primary-600" aria-label="Belum dibaca" />
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-sm text-surface-600">{notification.body}</span>
+                    <span className="mt-1 flex items-center gap-1 text-xs text-surface-400">
+                      {formatDateTime(notification.created_at)}
+                      {href && <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />}
+                    </span>
+                  </span>
+                </button>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {loadMoreError && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-danger-200 bg-danger-50 px-3 py-2">
+          <p className="text-sm text-danger-700">{loadMoreError}</p>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void loadMore()}>
+            Coba lagi
+          </Button>
+        </div>
+      )}
+
+      {hasMore && !loadMoreError && (
+        <Button type="button" variant="secondary" fullWidth onClick={() => void loadMore()} disabled={loadingMore}>
+          {loadingMore && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+          {loadingMore ? 'Memuat...' : 'Muat lebih banyak'}
+        </Button>
+      )}
     </div>
   );
 }

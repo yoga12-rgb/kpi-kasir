@@ -59,12 +59,18 @@ export default async function CashierAssessmentPage({
     );
   }
 
-  // Kategori aktif + detail aktif
-  const { data: categories } = await supabase
-    .from('category')
-    .select('id, name, weight, detail(*)')
-    .eq('is_active', true)
-    .order('name');
+  // Form periode harus membaca snapshot, bukan category/detail live.
+  const { data: categorySnapshots } = await supabase
+    .from('category_weight_history')
+    .select('category_id, category_name, weight')
+    .eq('period_id', period.id)
+    .order('category_name');
+
+  const { data: detailSnapshots } = await supabase
+    .from('detail_config_history')
+    .select('detail_id, category_id, detail_name, detail_type, scale_max, deduction_points')
+    .eq('period_id', period.id)
+    .order('detail_name');
 
   // Assessment kasir periode ini
   const { data: assessments } = await supabase
@@ -101,25 +107,41 @@ export default async function CashierAssessmentPage({
     .eq('cashier_id', cashierId)
     .maybeSingle();
 
-  const formCategories: CategoryWithDetails[] = (categories ?? []).map((cat) => ({
-    id: cat.id,
-    name: cat.name,
+  const { data: completion } = await supabase
+    .from('cashier_period_completion')
+    .select('status, assessed_details, total_details')
+    .eq('period_id', period.id)
+    .eq('cashier_id', cashierId)
+    .maybeSingle();
+
+  const detailsByCategory = new Map<string, NonNullable<typeof detailSnapshots>>();
+  for (const detail of detailSnapshots ?? []) {
+    if (!detail.category_id) continue;
+    const list = detailsByCategory.get(detail.category_id) ?? [];
+    list.push(detail);
+    detailsByCategory.set(detail.category_id, list);
+  }
+
+  const formCategories: CategoryWithDetails[] = (categorySnapshots ?? []).map((cat) => ({
+    id: cat.category_id,
+    name: cat.category_name ?? 'Kategori',
     weight: Number(cat.weight),
-    details: (cat.detail ?? [])
-      .filter((d) => d.is_active)
-      .map((d) => {
-        const a = assessmentMap.get(d.id);
-        return {
-          id: d.id,
-          name: d.name,
-          type: d.type,
+    details: (detailsByCategory.get(cat.category_id) ?? []).flatMap((d) => {
+      if (d.detail_type !== 'scale' && d.detail_type !== 'deduction') return [];
+
+      const a = assessmentMap.get(d.detail_id);
+      return [
+        {
+          id: d.detail_id,
+          name: d.detail_name ?? 'Detail',
+          type: d.detail_type,
           scale_max: d.scale_max !== null ? Number(d.scale_max) : null,
           deduction_points: d.deduction_points !== null ? Number(d.deduction_points) : null,
-          scale_value: d.type === 'scale' ? Number(a?.scale_value ?? null) : null,
-          normalized_score: Number(a?.normalized_score ?? (d.type === 'scale' ? 0 : 100)),
+          scale_value: d.detail_type === 'scale' ? Number(a?.scale_value ?? null) : null,
+          normalized_score: Number(a?.normalized_score ?? (d.detail_type === 'scale' ? 0 : 100)),
           assessment_id: a?.id ?? null,
           deduction_events:
-            d.type === 'deduction' && a
+            d.detail_type === 'deduction' && a
               ? (eventMap.get(a.id) ?? []).map((e) => ({
                   id: e.id,
                   note: e.note,
@@ -127,9 +149,17 @@ export default async function CashierAssessmentPage({
                   occurred_at: e.occurred_at,
                 }))
               : [],
-        };
-      }),
+        },
+      ];
+    }),
   }));
+
+  const completionLabel =
+    completion?.status === 'complete'
+      ? 'Selesai'
+      : completion?.status === 'in_progress'
+        ? `Berjalan ${completion.assessed_details}/${completion.total_details}`
+        : 'Belum mulai';
 
   return (
     <div className="p-4">
@@ -159,6 +189,7 @@ export default async function CashierAssessmentPage({
         <div className="mt-3 rounded-xl bg-primary-50 p-3 text-sm text-primary-800">
           Skor saat ini:{' '}
           <span className="font-bold">{formatScore(Number(periodScore?.total_score ?? 0))}</span>
+          <span className="ml-2 text-xs text-primary-700">· {completionLabel}</span>
         </div>
 
         <div className="mt-4">

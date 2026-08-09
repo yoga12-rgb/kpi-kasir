@@ -38,7 +38,7 @@ export function DetailForm({ categoryId }: { categoryId: string }) {
       if (!res.ok) {
         const msg = data?.details
           ? 'Data tidak valid. Detail skala wajib punya skala maks; detail deduksi wajib punya poin.'
-          : data.error ?? 'Gagal menyimpan';
+          : getErrorMessage(data.error, 'Gagal menyimpan');
         setError(msg);
         setLoading(false);
         return;

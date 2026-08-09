@@ -56,7 +56,7 @@ export function MentoringForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal menyimpan', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal menyimpan'), variant: 'error' });
         setLoading(false);
         return;
       }

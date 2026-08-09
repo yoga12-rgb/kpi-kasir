@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { getErrorMessage } from '@/lib/utils';
 
@@ -12,7 +13,7 @@ interface CashierStatusButtonProps {
   cashierName: string;
   outletName: string;
   isActive: boolean;
-  canDeactivate: boolean;
+  canManageStatus: boolean;
 }
 
 export function CashierStatusButton({
@@ -20,33 +21,47 @@ export function CashierStatusButton({
   cashierName,
   outletName,
   isActive,
-  canDeactivate,
+  canManageStatus,
 }: CashierStatusButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
 
-  if (!isActive || !canDeactivate) {
+  if (!canManageStatus) {
     return (
       <Badge variant={isActive ? 'success' : 'muted'}>{isActive ? 'Aktif' : 'Nonaktif'}</Badge>
     );
   }
 
-  async function deactivateCashier() {
+  const actionLabel = isActive ? 'Nonaktifkan' : 'Aktifkan kembali';
+
+  async function changeStatus() {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/cashiers/${cashierId}`, { method: 'DELETE' });
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const response = await fetch(`/api/cashiers/${cashierId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !isActive, reason }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { error?: string | { message?: string } }
+        | null;
 
       if (!response.ok) {
-        setError(data?.error ?? 'Gagal menonaktifkan kasir');
+        setError(
+          typeof data?.error === 'object'
+            ? getErrorMessage(data.error, 'Gagal mengubah status kasir')
+            : (data?.error ?? 'Gagal mengubah status kasir')
+        );
         return;
       }
 
       setOpen(false);
+      setReason('');
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -62,23 +77,42 @@ export function CashierStatusButton({
         className="rounded-full focus:outline-none focus:ring-2 focus:ring-danger-500/50"
         onClick={() => {
           setError(null);
+          setReason('');
           setOpen(true);
         }}
         aria-haspopup="dialog"
-        aria-label={`Nonaktifkan kasir ${cashierName}`}
-        title="Nonaktifkan kasir"
+        aria-label={`${actionLabel} kasir ${cashierName}`}
+        title={actionLabel}
       >
-        <Badge variant="success">Aktif</Badge>
+        <Badge variant={isActive ? 'success' : 'muted'}>{isActive ? 'Aktif' : 'Nonaktif'}</Badge>
       </button>
 
-      <Modal open={open} onClose={() => !loading && setOpen(false)} title="Nonaktifkan kasir?">
+      <Modal
+        open={open}
+        onClose={() => !loading && setOpen(false)}
+        title={`${actionLabel} kasir?`}
+      >
         <div className="space-y-3 text-sm text-surface-600">
           <p>
-            Kasir <strong className="font-semibold text-surface-900">{cashierName}</strong> di{' '}
-            <strong className="font-semibold text-surface-900">{outletName}</strong> akan menjadi
-            nonaktif.
+            Status kasir <strong className="font-semibold text-surface-900">{cashierName}</strong>{' '}
+            di <strong className="font-semibold text-surface-900">{outletName}</strong> akan
+            berubah menjadi {isActive ? 'nonaktif' : 'aktif'}.
           </p>
-          <p>Data penilaian, foto, pendampingan, dan riwayat penempatan tetap tersimpan.</p>
+          <p>Riwayat status dan penempatan tetap tersimpan sebagai catatan audit.</p>
+        </div>
+
+        <div className="mt-4">
+          <Textarea
+            id="cashier-status-reason"
+            label="Alasan perubahan"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Contoh: Kontrak kerja berakhir"
+            minLength={3}
+            maxLength={500}
+            required
+            disabled={loading}
+          />
         </div>
 
         {error && (
@@ -99,12 +133,12 @@ export function CashierStatusButton({
           </Button>
           <Button
             type="button"
-            variant="danger"
+            variant={isActive ? 'danger' : 'primary'}
             fullWidth
-            onClick={deactivateCashier}
-            disabled={loading}
+            onClick={changeStatus}
+            disabled={loading || reason.trim().length < 3}
           >
-            {loading ? 'Memproses...' : 'Nonaktifkan'}
+            {loading ? 'Memproses...' : actionLabel}
           </Button>
         </div>
       </Modal>

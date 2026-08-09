@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
-  assignUserBranches,
+  consumeInviteRegistration,
   getInviteByToken,
   isInviteValid,
-  markInviteUsed,
-  setUserRole,
 } from '@/lib/invites';
+import { withApiRoute } from '@/lib/api/route';
 
 const acceptSchema = z.object({
   token: z.string().min(1),
@@ -16,7 +15,7 @@ const acceptSchema = z.object({
   password: z.string().min(8),
 });
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = acceptSchema.safeParse(body);
   if (!parsed.success) {
@@ -67,22 +66,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Set role + nama
-    await setUserRole(userId, invite.role);
-    const { error: profileError } = await supabase
-      .from('users')
-      .update({ full_name: parsed.data.fullName })
-      .eq('id', userId);
-    if (profileError) throw profileError;
-
-    // Assign cabang
-    await assignUserBranches(userId, invite.branch_ids);
-
-    // Tandai invite secara bersyarat agar satu link hanya dapat dipakai sekali.
-    const marked = await markInviteUsed(parsed.data.token, userId);
-    if (!marked) {
-      throw new Error('Link undangan sudah digunakan');
-    }
+    await consumeInviteRegistration({
+      token: parsed.data.token,
+      userId,
+      email,
+      fullName: parsed.data.fullName,
+    });
   } catch (error) {
     await supabase.auth.admin.deleteUser(userId);
     const message = error instanceof Error ? error.message : 'Gagal menyelesaikan pendaftaran';
@@ -92,3 +81,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true });
 }
+
+export const POST = withApiRoute(handlePOST, {
+  publicRoute: true,
+  rateLimit: { name: 'invite-accept', limit: 10, windowMs: 10 * 60_000 },
+});

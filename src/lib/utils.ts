@@ -59,10 +59,14 @@ export function formatWeight(value: number): string {
   return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
 }
 
-export function getErrorMessage(error: unknown): string {
+export function getErrorMessage(error: unknown, fallback = 'Terjadi kesalahan yang tidak diketahui'): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
-  return 'Terjadi kesalahan yang tidak diketahui';
+  if (error && typeof error === 'object') {
+    if ('message' in error && typeof error.message === 'string') return error.message;
+    if ('error' in error) return getErrorMessage(error.error, fallback);
+  }
+  return fallback;
 }
 
 export function generateToken(length = 32): string {

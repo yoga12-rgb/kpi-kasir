@@ -52,7 +52,7 @@ export function InviteAcceptForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Gagal mendaftar');
+        setError(getErrorMessage(data.error, 'Gagal mendaftar'));
         setLoading(false);
         return;
       }

@@ -23,12 +23,13 @@ Browser
   |-- Next.js App Router pages (Server Components)
   |-- Client Components untuk form, filter, modal, tab, toast, dan fetch API
   v
-Next.js middleware
+Next.js proxy (`src/proxy.ts`)
   |-- refresh session Supabase untuk halaman HTML
   |-- redirect halaman non-publik ke /login jika belum login
   v
 Route Handlers / Server Components
-  |-- requireUser / requireRole / requirePermission
+  |-- `withApiRoute` mengembalikan JSON 401/403 untuk API
+  |-- requireUser / requireRole / requirePermission untuk halaman dan authorization bisnis
   |-- validasi payload dengan Zod pada sebagian besar mutasi
   |-- createClient(): Supabase SSR client dengan cookie user
   |-- createAdminClient(): service-role client, server-only
@@ -153,11 +154,13 @@ dan supervisor tanpa permission tulis.
 | `assessment`                                       | Nilai detail kasir pada periode                |
 | `deduction_event`                                  | Kejadian deduksi individual                    |
 | `cashier_period_score`                             | Skor berjalan hasil trigger                    |
+| `cashier_period_completion`                        | Status kelengkapan detail per kasir-periode   |
+| `cashier_period_roster`                             | Snapshot kasir dan placement per periode      |
 | `leaderboard_entry`                                | Snapshot periode tertutup                      |
 | `cashier_cumulative_score`                         | Rata-rata skor periode tertutup                |
 | `mentoring_session`, `mentoring_cashier_note`      | Catatan pendampingan                           |
 | `invite`                                           | Token pendaftaran sekali pakai                 |
-| `notification`                                     | Notifikasi per user                            |
+| `notification`                                     | Notifikasi per user; metadata entity/period dan `dedupe_key` untuk idempotensi |
 | `period_log`                                       | Log buka/tutup periode                         |
 
 Semua schema berada di `supabase/migrations/0001_init.sql` lalu dikembangkan oleh migrasi
@@ -168,27 +171,47 @@ berikutnya. Jangan mengedit migrasi lama yang sudah diterapkan; buat migrasi bar
 1. Skala dinormalisasi ke 0-100: `scale_value / scale_max * 100`.
 2. Deduksi dimulai dari 100 dan dikurangi total poin kejadian, minimum 0.
 3. Skor kategori adalah rata-rata detail yang sudah memiliki nilai.
-4. Kategori tanpa detail dinilai mendapat 100.
-5. Skor akhir adalah rata-rata tertimbang berdasarkan bobot kategori.
-6. Trigger PostgreSQL memanggil `recalculate_cashier_period_score` setiap assessment atau event
-   deduksi berubah.
-7. Saat periode ditutup, `close_period` membuat snapshot leaderboard, menghitung rank, mengunci
+4. Kategori tanpa assessment snapshot mendapat skor sementara 0; detail yang belum diisi juga
+   berkontribusi 0 sampai completion `complete`.
+5. `cashier_period_completion` menyimpan `not_started`, `in_progress`, atau `complete` serta jumlah
+   detail dinilai dari snapshot periode.
+6. Skor akhir adalah rata-rata tertimbang berdasarkan bobot kategori.
+7. Trigger PostgreSQL memanggil `recalculate_cashier_period_score` setiap assessment atau event
+   deduksi berubah dan memperbarui completion atomik.
+8. Dashboard dan cron reminder memakai completion, bukan sekadar keberadaan satu assessment.
+9. Roster menyimpan nama kasir, outlet, cabang, avatar path, dan tanggal eligible saat periode dibuka
+   atau saat admin memasukkan kasir baru. Transfer setelah periode dibuka tidak mengubah roster itu.
+10. Saat periode ditutup, `close_period` membuat snapshot leaderboard dari roster, menghitung rank, mengunci
    skor, dan memperbarui skor kumulatif.
+11. Sebelum close, `get_period_close_preflight` memvalidasi konfigurasi snapshot, tanggal, roster, dan
+   completion. Cashier incomplete memblokir close normal; admin dapat override dengan alasan 3-500
+   karakter yang dicatat di `period_log`.
+12. Hanya satu periode boleh berstatus `open`. Periode overlap ditolak dan close/open yang diulang
+   pada target yang sama tidak menggandakan snapshot atau log.
+13. Leaderboard periode open membaca `cashier_period_score`, sedangkan periode closed membaca
+   `leaderboard_entry` beserta rank historisnya. Filter outlet wajib berada pada branch yang dapat
+   diakses user; parameter level/mode/UUID invalid ditolak oleh route.
+14. Leaderboard JSON memakai cursor keyset `(score desc, cashier_id asc)` dengan limit maksimal 100;
+   export CSV adalah request eksplisit yang dibatasi 5000 row dan tetap scope-aware. Signed URL foto
+   hanya dibuat untuk row JSON pada halaman aktif.
 
-Konfigurasi yang berubah harus berlaku mulai periode berikutnya. Ini bergantung pada snapshot
-history dan pada saat ini perlu diuji lagi jika kategori/detail dinonaktifkan di tengah periode.
+Konfigurasi yang berubah berlaku mulai periode berikutnya. `category_weight_history` dan
+`detail_config_history` menyimpan nama, tipe, parent, bobot, scale, dan deduction snapshot.
+Rekalkulasi serta validasi assessment periode terbuka membaca snapshot periode, bukan konfigurasi
+live, sehingga perubahan nama/aktif/parameter tidak mengubah periode yang sudah berjalan.
 
 ## 9. API Catalog
 
 | Endpoint                                  | Method                | Guard / tujuan                            |
 | ----------------------------------------- | --------------------- | ----------------------------------------- |
 | `/api/setup`                              | POST                  | setup admin pertama                       |
-| `/api/branches`                           | GET/POST              | lihat; tambah admin                       |
+| `/api/branches`                           | GET/POST              | lihat paginated/filter; tambah admin      |
 | `/api/branches/[id]`                      | PATCH/DELETE          | admin                                     |
-| `/api/outlets`                            | GET/POST              | lihat/tambah sesuai permission dan branch |
+| `/api/outlets`                            | GET/POST              | lihat paginated/filter; tambah sesuai scope |
 | `/api/outlets/[id]`                       | PATCH/DELETE          | edit permission; delete admin             |
-| `/api/cashiers`                           | GET/POST              | lihat/tambah sesuai permission            |
+| `/api/cashiers`                           | GET/POST              | lihat paginated/filter; tambah sesuai scope |
 | `/api/cashiers/[id]`                      | PATCH/DELETE          | edit nama permission; nonaktifkan admin   |
+| `/api/cashiers/[id]/status`               | PATCH                 | aktif/nonaktif atomic; admin              |
 | `/api/cashiers/[id]/transfer`             | POST                  | mutasi admin                              |
 | `/api/cashiers/[id]/avatar`               | POST                  | upload/ganti foto dan signed access       |
 | `/api/categories`, `/api/categories/[id]` | GET/POST/PATCH/DELETE | admin untuk mutasi                        |
@@ -197,18 +220,21 @@ history dan pada saat ini perlu diuji lagi jika kategori/detail dinonaktifkan di
 | `/api/assessments/[id]/deductions`        | POST                  | catat event deduksi                       |
 | `/api/deductions/[id]`                    | DELETE                | hapus event deduksi                       |
 | `/api/periods`                            | GET/POST              | daftar; buka admin                        |
-| `/api/periods/[id]/close`                 | POST                  | tutup admin                               |
+| `/api/periods/[id]/preflight`             | GET                   | preview kesiapan close; admin             |
+| `/api/periods/[id]/close`                 | POST                  | tutup admin; optional incomplete override  |
+| `/api/periods/[id]/roster`                | POST                  | tambah kasir mid-period; admin             |
 | `/api/periods/current`                    | GET                   | periode open                              |
-| `/api/leaderboard`                        | GET                   | filter level dan mode                     |
+| `/api/leaderboard`                        | GET                   | level/mode/period/filter scope-aware       |
 | `/api/mentoring-sessions`                 | GET/POST              | list cursor dan catat sesi                |
-| `/api/notifications`                      | GET                   | notifikasi milik user                     |
-| `/api/notifications/[id]`                 | PATCH                 | tandai terbaca                            |
+| `/api/notifications`                      | GET                   | feed cursor, unread count; user sendiri   |
+| `/api/notifications/[id]`                 | PATCH                 | tandai satu notification terbaca          |
+| `/api/notifications/read-all`             | POST                  | tandai semua notification user terbaca    |
 | `/api/invites`                            | GET/POST              | admin                                     |
 | `/api/invites/[token]`                    | GET                   | baca invite dengan token                  |
 | `/api/invites/accept`                     | POST                  | registrasi password                       |
 | `/api/role-permissions`                   | GET/PATCH             | admin                                     |
-| `/api/cron/periods`                       | GET                   | header `x-cron-secret`                    |
-| `/api/cron/notifications`                 | GET                   | header `x-cron-secret`                    |
+| `/api/cron/periods`                       | POST                  | header `x-cron-secret`; optional `x-invocation-id` |
+| `/api/cron/notifications`                 | POST                  | header `x-cron-secret`; optional `x-invocation-id` |
 
 ## 10. Alur Fitur Penting
 
@@ -216,9 +242,13 @@ history dan pada saat ini perlu diuji lagi jika kategori/detail dinonaktifkan di
 
 1. Root membaca `app_setup.admin_created`.
 2. Jika false, user diarahkan ke `/setup`.
-3. API setup membuat user Auth lewat service-role, mengubah profile menjadi admin, lalu menutup setup.
-4. Login email/password memakai browser Supabase client.
-5. OAuth memakai `/auth/callback` untuk menukar code menjadi session.
+3. API setup melakukan reservation claim, membuat user Auth lewat service-role, finalize profile admin,
+   dan menutup setup. Request paralel kedua ditolak oleh RPC database.
+4. Login email/password memakai browser Supabase client. Pada Supabase local repository ini,
+   external email dan Google provider sengaja disabled; gunakan session harness untuk authenticated
+   E2E local. Provider login yang dipakai production wajib diaktifkan dan diverifikasi di target Auth.
+5. OAuth memakai `/auth/callback` untuk menukar code menjadi session. Redirect origin hanya memakai
+   `x-forwarded-host` bila cocok dengan allowlist.
 
 ### Invite
 
@@ -238,7 +268,50 @@ history dan pada saat ini perlu diuji lagi jika kategori/detail dinonaktifkan di
 ### Pendampingan
 
 `GET /api/mentoring-sessions` memakai cursor berdasarkan `visited_date` dan `id`, limit 1-50,
-filter cabang/outlet/tanggal, dan infinite scroll di client.
+filter cabang/outlet/tanggal, dan infinite scroll di client. `GET /api/leaderboard` memakai cursor
+berdasarkan score dan cashier ID, search nama server-side, serta `format=csv` untuk export terkontrol.
+
+Daftar cashier, branch, outlet, dan user memakai `page` offset bounded (default 25, maksimal 100 per
+API request) serta filter nama/kode/email server-side. Halaman hanya membuat signed avatar URL untuk
+cashier yang sedang terlihat. Invite dan mentoring tetap memakai cursor karena feed-nya berubah saat
+data baru masuk; jangan mengganti feed cursor dengan offset tanpa evaluasi duplicate/skip row.
+
+### Dashboard
+
+Dashboard bersifat role-aware. Admin melihat readiness close, validitas snapshot config, completion,
+invite, dan unread alert. Manager melihat progres branch assignment, skor rendah, pendampingan, dan
+top/bottom performer. Supervisor melihat cashier yang perlu dinilai, pendampingan terakhir, dan action
+notification. Semua query dashboard memakai scope branch/permission; jika query gagal, UI menampilkan
+`Tidak tersedia` atau error banner, bukan angka nol.
+
+### Notification Center
+
+`GET /api/notifications` memakai cursor keyset `(created_at desc, id desc)` dengan `limit` 1-100.
+Response berisi `notifications`, `nextCursor`, `hasMore`, dan `unreadCount`; query selalu dibatasi
+oleh `user_id` session dan RLS. `POST /api/notifications/read-all` melakukan satu update atomik
+untuk notification milik user aktif. Aksi kartu menandai item terbaca setelah API sukses, lalu
+mengarahkan hanya ke route internal yang diizinkan (`/assessment/[cashierId]`, `/cashiers/[id]`,
+atau `/outlets/[id]`); payload notification tidak boleh dipakai sebagai arbitrary redirect.
+
+Header mengambil unread count tanpa memuat seluruh feed dan menerima event count setelah aksi baca.
+Jika request feed atau aksi gagal, UI mempertahankan state terakhir, menampilkan pesan error, dan
+menyediakan retry; tidak ada optimistic mark-all sebelum response API berhasil.
+
+### Error, Logging, Dan Security Headers
+
+Semua route yang dibungkus `withApiRoute` mengembalikan error berbentuk
+`{ error: { code, message, requestId } }`; detail Postgres/Supabase disanitasi dan request ID dicatat
+server-side. Client membaca nested error melalui `getErrorMessage`, bukan menganggap `error` selalu
+string. Cron mempertahankan `invocationId` pada response error untuk korelasi.
+
+`next.config.mjs` memasang CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy`, `Permissions-Policy`, dan `X-Permitted-Cross-Domain-Policies`. CSP mengizinkan
+Supabase API/storage yang dikonfigurasi, tetapi melarang object, framing, dan form action eksternal.
+
+Rate limit in-memory tersedia di `src/lib/security/rate-limit.ts`: setup 5/menit per IP, invite
+accept 10/10 menit per IP, invite create 30/10 menit per user, dan avatar 20/15 menit per user.
+Limiter ini adalah guard best-effort per process; production multi-instance tetap membutuhkan edge
+rate limit atau store terdistribusi sebelum dianggap kontrol tunggal.
 
 ## 11. Setup Development
 
@@ -251,7 +324,8 @@ Salin `.env.example` menjadi `.env.local` dan isi:
 | `NEXT_PUBLIC_SUPABASE_URL`      | URL project Supabase                                 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | key publik dengan RLS                                |
 | `SUPABASE_SERVICE_ROLE_KEY`     | server-only, jangan expose                           |
-| `NEXT_PUBLIC_APP_URL`           | origin aplikasi untuk link invite/OAuth              |
+| `NEXT_PUBLIC_APP_URL`           | origin aplikasi untuk link invite dan fallback OAuth |
+| `APP_ORIGIN_ALLOWLIST`          | daftar origin OAuth production, dipisahkan koma      |
 | `CRON_SECRET`                   | secret panjang untuk cron                            |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`  | catatan opsional; provider dikonfigurasi di Supabase |
 
@@ -288,26 +362,48 @@ seluruh urutan migrasi dari awal sampai akhir.
 
 Yang tersedia saat ini:
 
-- Vitest: normalisasi dan perhitungan kategori, 16 test lulus pada audit terakhir.
+- Vitest: normalisasi, perhitungan kategori, leaderboard cursor, cron auth, notification cursor,
+  pagination helper, rate limit, dan permission dependency; 35 test lulus pada gate terakhir.
 - TypeScript strict check lulus.
-- ESLint lulus dengan catatan `next lint` deprecated pada Next.js 16.
+- ESLint CLI flat config lulus tanpa warning/error.
 - Production build lulus.
+- `npm run test:security`: regression SQL/RLS/RPC deterministik dengan rollback lulus.
+- `npm run test:types`: memastikan file Supabase schema generated tidak kembali ke placeholder
+  `Database = any` dan marker tabel/RPC utama tetap tersedia.
+- `npm run test:ops`: memvalidasi environment operations tanpa mencetak secret; production juga
+  mewajibkan HTTPS, origin allowlist, secret cron minimal 32 karakter, dan service-role server-only.
+- `npm run test:api`: contract smoke untuk enam protected endpoint; dengan `API_SMOKE_BASE_URL`,
+  setiap endpoint tanpa session wajib mengembalikan JSON `401` dengan `error.code` dan `requestId`.
+- `npm run test:e2e`: Playwright critical path untuk desktop dan mobile. Suite mendukung user test
+  melalui `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` atau session harness non-production melalui
+  `E2E_ACCESS_TOKEN`, `E2E_USER_ID`, dan `E2E_USER_EMAIL`. CI dapat memasok
+  `E2E_SUPABASE_URL`/`E2E_SUPABASE_ANON_KEY`/`E2E_SUPABASE_SERVICE_ROLE_KEY` untuk Supabase staging.
+  Set `E2E_PWA=true` pada production server untuk mengaktifkan cache boundary test. Browser
+  dijalankan serial agar stabil.
 
 Yang belum tersedia atau belum cukup:
 
-- folder `e2e` belum ada walaupun script/config Playwright tersedia;
-- belum ada test otomatis RLS dan permission matrix;
-- belum ada test integrasi trigger/RPC scoring;
-- belum ada Lighthouse/performance baseline.
+- Lighthouse/performance baseline belum tersedia;
+- cakupan HTTP integration dan concurrency production belum lengkap;
+- E2E authenticated pada CI memerlukan secret user test atau session harness yang dikonfigurasi di
+  repository/environment CI; tanpa itu Playwright sengaja skip untuk mencegah penggunaan akun nyata.
 
 Minimal sebelum merge fitur database:
 
 ```bash
 npm run typecheck
+npm run test:types
+npm run test:ops
 npm run lint
 npm test
 npm run build
+npm run test:api
+npm run test:e2e
 ```
+
+`npm run test:api` membutuhkan server test yang sudah berjalan, misalnya
+`API_SMOKE_BASE_URL=http://127.0.0.1:3000 npm run test:api`. E2E membutuhkan Chromium dari
+`npx playwright install chromium` dan kredensial test non-production; jangan memakai akun production.
 
 ## 14. Deployment
 
@@ -319,9 +415,13 @@ Checklist production:
 2. Konfigurasi Google provider dan redirect URL di Supabase jika OAuth akan dipakai.
 3. Push migrasi dengan urutan yang sama; jangan memakai `db reset` production.
 4. Pastikan private bucket `cashier-photos` dan policy sudah ada.
-5. Jadwalkan `/api/cron/periods` dan `/api/cron/notifications` dengan header secret.
-6. Aktifkan backup/PITR dan simpan prosedur rollback.
-7. Smoke test setup/login/invite, isolasi cabang, scoring, photo, mentoring, notification, dan
+5. Jadwalkan `POST /api/cron/periods` dan `POST /api/cron/notifications` dengan header
+   `x-cron-secret`; jangan menaruh secret di URL. Simpan `x-invocation-id` bila provider cron
+   mendukung korelasi request.
+6. Verifikasi CSP/security headers dan edge rate limit pada domain production; limiter in-memory
+   bukan pengganti kontrol terdistribusi.
+7. Aktifkan backup/PITR dan simpan prosedur rollback.
+8. Smoke test setup/login/invite, isolasi cabang, scoring, photo, mentoring, notification, dan
    close/open period.
 
 Deployment belum dianggap selesai sampai temuan P0 pada audit ditutup.

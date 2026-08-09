@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getInviteByToken, isInviteValid } from '@/lib/invites';
 import { createAdminClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+async function handleGET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const invite = await getInviteByToken(token);
 
@@ -31,3 +32,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     },
   });
 }
+
+export const GET = withApiRoute(handleGET, { publicRoute: true });

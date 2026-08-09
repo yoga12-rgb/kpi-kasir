@@ -1,34 +1,48 @@
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
 import { InviteForm } from '@/components/invite/InviteForm';
 import { InviteList } from '@/components/invite/InviteList';
+import { PaginationControls } from '@/components/ui/PaginationControls';
+import { Search } from 'lucide-react';
 import { RolePermissionSettings } from '@/components/settings/RolePermissionSettings';
 import { UserSettingsTabs } from '@/components/settings/UserSettingsTabs';
+import { UserManagementList } from '@/components/settings/UserManagementList';
 import { requireRole } from '@/lib/auth/guards';
+import { listInvites } from '@/lib/invites';
+import { escapeIlike, getPageRange, getTotalPages, parsePage } from '@/lib/pagination';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UsersPage() {
-  await requireRole(['admin']);
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ q?: string; page?: string }>;
+}) {
+  const admin = await requireRole(['admin']);
   const supabase = await createClient();
+  const params = await searchParams;
+  const search = params?.q?.trim().slice(0, 100) ?? '';
+  const page = parsePage(params?.page);
+  const pageSize = 25;
+  const { from, to } = getPageRange(page, pageSize);
 
-  const { data: users } = await supabase
+  let usersQuery = supabase
     .from('users')
-    .select('id, full_name, email, role, is_active, created_at')
+    .select('id, full_name, email, role, is_active, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(from, to);
+  if (search) {
+    const escaped = escapeIlike(search);
+    usersQuery = usersQuery.or(`full_name.ilike.%${escaped}%,email.ilike.%${escaped}%`);
+  }
+  const { data: users, count: userCount } = await usersQuery;
 
   const { data: branches } = await supabase
     .from('branch')
     .select('id, name, is_active')
     .order('name');
 
-  const { data: invites } = await supabase
-    .from('invite')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const { invites, nextCursor: invitesNextCursor } = await listInvites({ limit: 20 });
 
   const allBranches = branches ?? [];
   const activeBranches = allBranches.filter((branch) => branch.is_active !== false);
@@ -53,31 +67,34 @@ export default async function UsersPage() {
               <h2 className="text-lg font-semibold text-surface-900">Daftar Pengguna</h2>
               <p className="mt-0.5 text-xs text-surface-500">Akun yang terdaftar di aplikasi.</p>
             </div>
-            <div className="space-y-2">
-              {(users ?? []).map((u) => (
-                <Card key={u.id} className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-surface-900">{u.full_name}</p>
-                    <p className="truncate text-sm text-surface-500">{u.email}</p>
-                    <p className="text-xs text-surface-400">Bergabung {formatDate(u.created_at)}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Badge
-                      variant={
-                        u.role === 'admin' ? 'danger' : u.role === 'manager' ? 'info' : 'default'
-                      }
-                    >
-                      {u.role}
-                    </Badge>
-                    {u.is_active ? (
-                      <Badge variant="success">Aktif</Badge>
-                    ) : (
-                      <Badge variant="muted">Nonaktif</Badge>
-                    )}
-                  </div>
-                </Card>
-              ))}
-            </div>
+            <form method="get" className="mb-3 flex items-end gap-2">
+              <label className="min-w-0 flex-1 text-xs font-medium text-surface-500">
+                Cari pengguna
+                <input
+                  name="q"
+                  defaultValue={search}
+                  maxLength={100}
+                  placeholder="Nama atau email"
+                  className="input mt-1"
+                />
+              </label>
+              <button type="submit" className="btn btn-secondary h-10 w-10 px-0" aria-label="Cari pengguna" title="Cari">
+                <Search className="mx-auto h-4 w-4" />
+              </button>
+            </form>
+            <UserManagementList
+              currentUserId={admin.id}
+              initialUsers={(users ?? []).map((user) => ({
+                ...user,
+                created_label: formatDate(user.created_at),
+              }))}
+            />
+            <PaginationControls
+              pathname="/settings/users"
+              params={{ q: search || undefined }}
+              page={page}
+              totalPages={getTotalPages(userCount, pageSize)}
+            />
           </div>
         }
         rolePermissions={
@@ -100,7 +117,12 @@ export default async function UsersPage() {
               </p>
             </div>
             <InviteForm branches={activeBranches.map((b) => ({ id: b.id, name: b.name }))} />
-            <InviteList invites={inviteList} />
+            <InviteList
+              invites={inviteList}
+              nextCursor={invitesNextCursor}
+              branches={allBranches.map((branch) => ({ id: branch.id, name: branch.name }))}
+              appUrl={appUrl}
+            />
           </div>
         }
       />

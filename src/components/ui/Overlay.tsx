@@ -1,5 +1,5 @@
-import { CheckCircle2, CircleAlert, Info, type LucideIcon } from 'lucide-react';
-import { type ReactNode, useEffect, useState } from 'react';
+import { CheckCircle2, CircleAlert, Info, X, type LucideIcon } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /* ---------- Bottom Sheet ---------- */
@@ -64,6 +64,16 @@ const toastIcons: Record<ToastVariant, LucideIcon> = {
 
 export function Toast({ open, message, variant = 'info', onClose, duration = 3500 }: ToastProps) {
   const [phase, setPhase] = useState<'hidden' | 'visible' | 'exiting'>('hidden');
+  const exitTimeoutRef = useRef<number | null>(null);
+
+  const beginExit = useCallback(() => {
+    if (exitTimeoutRef.current !== null) window.clearTimeout(exitTimeoutRef.current);
+    setPhase('exiting');
+    exitTimeoutRef.current = window.setTimeout(() => {
+      exitTimeoutRef.current = null;
+      onClose?.();
+    }, 160);
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -71,22 +81,18 @@ export function Toast({ open, message, variant = 'info', onClose, duration = 350
       return;
     }
 
-    const exitDuration = 160;
-    let exitTimeoutId: number | undefined;
     setPhase('visible');
 
-    const closeTimeoutId = window.setTimeout(() => {
-      setPhase('exiting');
-      exitTimeoutId = window.setTimeout(() => {
-        onClose?.();
-      }, exitDuration);
-    }, duration);
+    const closeTimeoutId = window.setTimeout(beginExit, Math.max(0, duration));
 
     return () => {
       window.clearTimeout(closeTimeoutId);
-      if (exitTimeoutId) window.clearTimeout(exitTimeoutId);
+      if (exitTimeoutRef.current !== null) {
+        window.clearTimeout(exitTimeoutRef.current);
+        exitTimeoutRef.current = null;
+      }
     };
-  }, [duration, message, onClose, open, variant]);
+  }, [beginExit, duration, message, open, variant]);
 
   if (!open || phase === 'hidden') return null;
 
@@ -96,7 +102,7 @@ export function Toast({ open, message, variant = 'info', onClose, duration = 350
     <div className="pointer-events-none fixed inset-x-0 top-[4.25rem] z-[60] mx-auto flex max-w-app justify-center px-4">
       <div
         className={cn(
-          'flex max-w-full items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-medium shadow-xl shadow-black/20',
+          'pointer-events-auto flex max-w-full items-center gap-2 rounded-lg border px-3.5 py-2.5 text-sm font-medium shadow-xl shadow-black/20',
           toastStyles[variant],
           phase === 'exiting' ? 'toast-exit' : 'toast-enter'
         )}
@@ -105,6 +111,16 @@ export function Toast({ open, message, variant = 'info', onClose, duration = 350
       >
         <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="min-w-0 break-words">{message}</span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={beginExit}
+            className="ml-1 shrink-0 rounded p-0.5 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current"
+            aria-label="Tutup notifikasi"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,15 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const setupSchema = z.object({
-  fullName: z.string().min(2),
-  email: z.string().email(),
+  fullName: z.string().trim().min(2),
+  email: z.string().trim().email().transform((value) => value.toLowerCase()),
   password: z.string().min(8),
 });
 
-export async function POST(request: Request) {
+function setupError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+async function handlePOST(request: Request) {
   const body = await request.json().catch(() => null);
 
   const parsed = setupSchema.safeParse(body);
@@ -21,19 +27,20 @@ export async function POST(request: Request) {
   }
 
   const supabase = await createAdminClient();
+  const claimId = randomUUID();
 
-  // Cek apakah setup sudah selesai
-  const { data: setup } = await supabase
-    .from('app_setup')
-    .select('admin_created')
-    .limit(1)
-    .maybeSingle();
-
-  if (setup?.admin_created) {
-    return NextResponse.json({ error: 'Setup sudah selesai' }, { status: 400 });
+  const { error: claimError } = await supabase.rpc('reserve_setup', {
+    p_claim_id: claimId,
+  });
+  if (claimError) {
+    const message = claimError.message.toLowerCase();
+    if (message.includes('sudah selesai')) return setupError('Setup sudah selesai', 409);
+    if (message.includes('sedang diproses') || message.includes('terlalu banyak')) {
+      return setupError('Setup sedang dibatasi, coba lagi nanti', 429);
+    }
+    return setupError('Setup tidak dapat dimulai', 500);
   }
 
-  // Buat user admin di Supabase Auth
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -44,29 +51,35 @@ export async function POST(request: Request) {
   });
 
   if (authError) {
-    return NextResponse.json({ error: authError.message }, { status: 400 });
+    await supabase.rpc('release_setup', { p_claim_id: claimId });
+    return setupError('Akun admin tidak dapat dibuat. Periksa email dan coba lagi.', 400);
   }
 
-  // Update profil role admin + set app_setup
-  const userId = authUser.user!.id;
-
-  const { error: profileError } = await supabase
-    .from('users')
-    .update({ role: 'admin', full_name: parsed.data.fullName })
-    .eq('id', userId);
-
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 });
+  const userId = authUser.user?.id;
+  if (!userId) {
+    await supabase.rpc('release_setup', { p_claim_id: claimId });
+    return setupError('Akun admin tidak dapat dibuat', 500);
   }
 
-  const { error: setupError } = await supabase
-    .from('app_setup')
-    .update({ admin_created: true, completed_at: new Date().toISOString() })
-    .eq('id', '00000000-0000-0000-0000-000000000001');
+  const { error: finalizeError } = await supabase.rpc('finalize_setup', {
+    p_claim_id: claimId,
+    p_user_id: userId,
+    p_email: parsed.data.email,
+    p_full_name: parsed.data.fullName,
+  });
 
-  if (setupError) {
-    return NextResponse.json({ error: setupError.message }, { status: 500 });
+  if (finalizeError) {
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
+    if (!deleteError) {
+      await supabase.rpc('release_setup', { p_claim_id: claimId });
+    }
+    return setupError('Setup admin gagal diselesaikan, silakan coba lagi.', 500);
   }
 
   return NextResponse.json({ success: true });
 }
+
+export const POST = withApiRoute(handlePOST, {
+  publicRoute: true,
+  rateLimit: { name: 'setup', limit: 5, windowMs: 60_000 },
+});

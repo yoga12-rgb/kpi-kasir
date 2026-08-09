@@ -9,14 +9,44 @@ environment staging.
 | Check                      | Hasil                                                       |
 | -------------------------- | ----------------------------------------------------------- |
 | `npm run typecheck`        | Lulus                                                       |
-| `npm run lint`             | Lulus; `next lint` deprecated pada Next.js 16               |
-| `npm test`                 | Lulus, 2 file dan 16 test                                   |
-| `npm run build`            | Lulus, Next.js 15.5.23                                      |
-| `npm audit --omit=dev`     | Gagal: 3 high severity dependency findings                  |
-| Playwright E2E             | Config tersedia, folder `e2e` belum ada                     |
+| `npm run lint`             | Lulus dengan ESLint CLI flat config                         |
+| `npm test`                 | Lulus, 10 file dan 35 test                                  |
+| `npm run build`            | Lulus, Next.js 16.3.0                                       |
+| `npm audit --omit=dev`     | Lulus tanpa high/critical production finding                |
+| Playwright E2E             | Lulus, 8 test desktop/mobile termasuk PWA cache boundary   |
+| `npm run test:api`         | Lulus, 6 protected endpoint menghasilkan JSON 401           |
+| `npm run test:types`       | Lulus, generated schema dan marker tabel/RPC tervalidasi    |
+| `npm run test:ops`         | Lulus, non-production dan synthetic production preflight   |
+| `npm run test:security`    | Lulus, security/RLS/RPC regression deterministik            |
 | `supabase db lint --local` | Lulus; tidak ada schema error yang dilaporkan               |
-| Supabase migration list    | Tidak dapat dijalankan karena project belum linked          |
+| Supabase migration list    | `0053` diterapkan pada Supabase lokal                        |
 | Graphify                   | Diperbarui: 802 node, 1.577 edge; SQL belum terindeks penuh |
+
+## 1.1 Status Remediasi Terbaru
+
+Temuan P0 dan P1-1 sampai P1-5 pada audit historis di bawah ini sudah ditangani pada migration
+`0026` sampai `0053`, generated database types, dan route yang terkait.
+Bukti regresi terbaru mencakup privilege/RLS matrix, rollback transaction, permission dependency,
+API contract smoke, dan authenticated Playwright critical path. Temuan di bawah tetap dipertahankan
+sebagai jejak audit awal, bukan sebagai status code saat ini.
+
+- Role escalation dan akun nonaktif: ditutup melalui user mutation RPC, active-user guard, dan
+  regression SQL.
+- Policy write permissive serta RPC state-changing: dicabut/dibatasi; mutation sensitif melewati
+  route guard dan service-role client sesuai kontrak.
+- Kebocoran leaderboard/cross-branch dan kolom sensitif: ditutup dengan scope branch, snapshot
+  historis, grants column-level, dan test isolasi.
+- Operasi multi-tabel, invite, transfer, mentoring, avatar, lifecycle, scoring, period, cron,
+  notification, pagination, dan error contract: dibuat atomik/idempotent atau diberi kompensasi dan
+  regression test.
+- Dependency production high/critical: tidak ditemukan pada `npm audit --omit=dev` terakhir.
+- P1-5 `Database = any`: ditutup dengan schema generated dari Supabase lokal, compatibility aliases,
+  strict typecheck, dan `npm run test:types` sebagai regression guard. `@supabase/ssr` dan
+  `@supabase/supabase-js` juga diselaraskan pada range yang kompatibel.
+
+Residual risk yang belum dapat dibuktikan dari workspace lokal: restore backup production yang nyata,
+penetration test eksternal, edge rate limit multi-instance, dan Lighthouse baseline. Prosedurnya ada
+di `docs/OPERATIONS_RUNBOOK.md` dan harus dijalankan pada staging/production sebelum go-live.
 
 ## 2. Ringkasan Arsitektur
 
@@ -29,6 +59,10 @@ Kekuatan utamanya adalah pemisahan domain per folder, soft delete, snapshot konf
 dan branch-aware query pada banyak alur utama.
 
 ## 3. Findings Prioritas
+
+Bagian ini mempertahankan snapshot temuan audit awal untuk jejak audit. Status implementasi terkini
+dan bukti remediation ada di bagian 1.1; rekomendasi di bawah tidak boleh dibaca sebagai kondisi
+source code saat ini tanpa membandingkannya dengan bagian tersebut.
 
 ### P0 - Blocker Produksi
 

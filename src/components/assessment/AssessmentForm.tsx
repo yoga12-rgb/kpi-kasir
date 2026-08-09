@@ -79,7 +79,7 @@ export function AssessmentForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal menyimpan', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal menyimpan'), variant: 'error' });
         setLoading(false);
         return;
       }
@@ -114,7 +114,7 @@ export function AssessmentForm({
 
         const initData = await initRes.json();
         if (!initRes.ok) {
-          setToast({ message: initData.error ?? 'Gagal inisialisasi', variant: 'error' });
+          setToast({ message: getErrorMessage(initData.error, 'Gagal inisialisasi'), variant: 'error' });
           setLoading(false);
           return;
         }
@@ -132,7 +132,7 @@ export function AssessmentForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal mencatat kejadian', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal mencatat kejadian'), variant: 'error' });
         setLoading(false);
         return;
       }
@@ -155,7 +155,7 @@ export function AssessmentForm({
       const res = await fetch(`/api/deductions/${eventId}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal menghapus', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal menghapus'), variant: 'error' });
         setLoading(false);
         return;
       }

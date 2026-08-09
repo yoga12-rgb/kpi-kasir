@@ -1,7 +1,7 @@
 'use client';
 
 import { ShieldCheck, UserPlus, Users } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type TabId = 'users' | 'permissions' | 'invite';
@@ -26,6 +26,28 @@ export function UserSettingsTabs({
     permissions: rolePermissions,
     invite,
   }[activeTab];
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    users: null,
+    permissions: null,
+    invite: null,
+  });
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, tabId: TabId) {
+    const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
+    if (currentIndex < 0) return;
+
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === currentIndex) return;
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex].id;
+    setActiveTab(nextTab);
+    tabRefs.current[nextTab]?.focus();
+  }
 
   return (
     <div className="mt-4">
@@ -40,10 +62,16 @@ export function UserSettingsTabs({
             <button
               key={id}
               type="button"
+              id={`user-settings-tab-${id}`}
               role="tab"
               aria-selected={active}
-              aria-controls={`user-settings-tabpanel-${id}`}
+              aria-controls="user-settings-tabpanel"
+              tabIndex={active ? 0 : -1}
+              ref={(element) => {
+                tabRefs.current[id] = element;
+              }}
               onClick={() => setActiveTab(id)}
+              onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
                 'flex min-w-max flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50',
                 active
@@ -59,9 +87,10 @@ export function UserSettingsTabs({
       </div>
 
       <div
-        id={`user-settings-tabpanel-${activeTab}`}
+        id="user-settings-tabpanel"
         role="tabpanel"
-        aria-label={tabs.find((tab) => tab.id === activeTab)?.label}
+        aria-labelledby={`user-settings-tab-${activeTab}`}
+        tabIndex={0}
         className="mt-4"
       >
         {content}

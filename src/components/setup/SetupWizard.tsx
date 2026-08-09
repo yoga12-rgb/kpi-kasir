@@ -41,7 +41,7 @@ export function SetupWizard() {
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal membuat admin', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal membuat admin'), variant: 'error' });
         setLoading(false);
         return;
       }

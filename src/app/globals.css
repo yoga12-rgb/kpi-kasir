@@ -158,7 +158,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .toast-enter,
   .toast-exit,
-  .rank-frame-gold {
+  .rank-frame-gold,
+  .animate-pulse,
+  .animate-spin {
     animation-duration: 1ms;
     animation-iteration-count: 1;
   }

@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const detailSchema = z
   .object({
-    name: z.string().min(2),
+    name: z.string().trim().min(2).max(150),
     type: z.enum(['scale', 'deduction']),
-    scaleMax: z.number().min(1).optional().nullable(),
-    deductionPoints: z.number().min(1).optional().nullable(),
+    scaleMax: z.number().finite().positive().optional().nullable(),
+    deductionPoints: z.number().finite().positive().optional().nullable(),
   })
   .refine(
     (data) =>
@@ -19,7 +20,7 @@ const detailSchema = z
     }
   );
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase
@@ -31,8 +32,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({ details: data ?? [] });
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireRole(['admin']);
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireRole(['admin']);
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const parsed = detailSchema.safeParse(body);
@@ -43,19 +44,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('detail')
-    .insert({
-      category_id: id,
-      name: parsed.data.name,
-      type: parsed.data.type,
-      scale_max: parsed.data.type === 'scale' ? parsed.data.scaleMax : null,
-      deduction_points: parsed.data.type === 'deduction' ? parsed.data.deductionPoints : null,
-    })
-    .select()
-    .single();
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase.rpc(
+    'admin_create_detail',
+    parsed.data.type === 'scale'
+      ? {
+          p_actor_id: profile.id,
+          p_category_id: id,
+          p_name: parsed.data.name,
+          p_type: parsed.data.type,
+          p_scale_max: parsed.data.scaleMax!,
+        }
+      : {
+          p_actor_id: profile.id,
+          p_category_id: id,
+          p_name: parsed.data.name,
+          p_type: parsed.data.type,
+          p_deduction_points: parsed.data.deductionPoints!,
+        }
+  );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ detail: data }, { status: 201 });
 }
+
+export const GET = withApiRoute(handleGET);
+export const POST = withApiRoute(handlePOST);

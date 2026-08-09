@@ -54,6 +54,19 @@ export default async function AssessmentPage() {
 
   const scoreMap = new Map((scores ?? []).map((s) => [s.cashier_id, Number(s.total_score)]));
 
+  const { data: completions } = period
+    ? await supabase
+        .from('cashier_period_completion')
+        .select('cashier_id, status, assessed_details, total_details')
+        .eq('period_id', period.id)
+        .in(
+          'cashier_id',
+          (cashiers ?? []).map((c) => c.id)
+        )
+    : { data: [] };
+
+  const completionMap = new Map((completions ?? []).map((c) => [c.cashier_id, c]));
+
   const avatarMap = await getCashierAvatarUrls(
     supabase,
     (cashiers ?? []).map((c) => c.avatar_url)
@@ -76,6 +89,14 @@ export default async function AssessmentPage() {
             const branchCode = outlet?.branch?.code;
             const branchName = outlet?.branch?.name;
             const score = scoreMap.get(cashier.id);
+            const completion = completionMap.get(cashier.id);
+            const completionStatus = completion?.status ?? 'not_started';
+            const completionLabel =
+              completionStatus === 'complete'
+                ? 'Selesai'
+                : completionStatus === 'in_progress'
+                  ? `Berjalan ${completion?.assessed_details ?? 0}/${completion?.total_details ?? 0}`
+                  : 'Belum mulai';
             return (
               <Link key={cashier.id} href={`/assessment/${cashier.id}`} className="block">
                 <Card className="flex items-center gap-3 transition-colors hover:bg-surface-100">
@@ -99,9 +120,22 @@ export default async function AssessmentPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={score !== undefined && score > 0 ? 'success' : 'muted'}>
-                      {score !== undefined ? `Skor ${score.toFixed(1)}` : 'Belum dinilai'}
-                    </Badge>
+                    <div className="text-right">
+                      <Badge
+                        variant={
+                          completionStatus === 'complete'
+                            ? 'success'
+                            : completionStatus === 'in_progress'
+                              ? 'warning'
+                              : 'muted'
+                        }
+                      >
+                        {completionLabel}
+                      </Badge>
+                      <p className="mt-1 text-xs text-surface-500">
+                        Skor {score !== undefined ? score.toFixed(1) : '0.0'}
+                      </p>
+                    </div>
                     <ChevronRight className="h-4 w-4 text-surface-400" />
                   </div>
                 </Card>

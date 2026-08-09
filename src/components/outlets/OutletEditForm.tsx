@@ -32,7 +32,7 @@ export function OutletEditForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setMessage({ type: 'error', text: data.error ?? 'Gagal menyimpan' });
+        setMessage({ type: 'error', text: getErrorMessage(data.error, 'Gagal menyimpan') });
         return;
       }
 

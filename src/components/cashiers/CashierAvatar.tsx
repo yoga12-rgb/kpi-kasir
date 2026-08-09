@@ -31,6 +31,7 @@ export function CashierAvatar({
         alt={name}
         width={size}
         height={size}
+        unoptimized
         className={cn('shrink-0 rounded-full object-cover', className)}
         style={style}
       />

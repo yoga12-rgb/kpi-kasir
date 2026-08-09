@@ -33,17 +33,28 @@ export default async function LeaderboardPage() {
     .in('branch_id', branchIds)
     .order('name');
 
+  const { data: periods } = await supabase
+    .from('period')
+    .select('id, label, status')
+    .order('start_date', { ascending: false })
+    .limit(24);
+
   return (
     <div className="p-4">
         <h1 className="text-xl font-bold text-surface-900">Leaderboard</h1>
         <p className="mt-0.5 text-sm text-surface-500">Ranking performa kasir</p>
         <div className="mt-4">
-          <LeaderboardView
+            <LeaderboardView
             branches={(branches ?? []).map((b) => ({ id: b.id, name: b.name }))}
             outlets={(outlets ?? []).map((o) => ({
               id: o.id,
               name: o.name,
               branch_id: o.branch_id,
+            }))}
+            periods={(periods ?? []).map((period) => ({
+              id: period.id,
+              label: period.label,
+              status: period.status,
             }))}
           />
         </div>

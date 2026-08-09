@@ -1,54 +1,38 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const transferSchema = z.object({
   outletId: z.string().uuid(),
+  effectiveAt: z.string().datetime().optional(),
 });
+const cashierIdSchema = z.string().uuid();
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const admin = await requireAdmin();
   const { id } = await params;
+  const parsedCashierId = cashierIdSchema.safeParse(id);
+  if (!parsedCashierId.success) {
+    return NextResponse.json({ error: 'ID kasir tidak valid' }, { status: 400 });
+  }
   const body = await request.json().catch(() => null);
   const parsed = transferSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase.rpc('transfer_cashier_atomic', {
+    p_cashier_id: parsedCashierId.data,
+    p_target_outlet_id: parsed.data.outletId,
+    p_effective_at: parsed.data.effectiveAt ?? new Date().toISOString(),
+    p_actor_id: admin.id,
+  });
 
-  // Ambil kasir
-  const { data: cashier, error: cashierError } = await supabase
-    .from('cashier')
-    .select('*, outlet!inner(branch_id)')
-    .eq('id', id)
-    .single();
-
-  if (cashierError || !cashier) {
-    return NextResponse.json({ error: 'Kasir tidak ditemukan' }, { status: 404 });
-  }
-
-  // Tutup riwayat penempatan aktif
-  await supabase
-    .from('cashier_outlet_history')
-    .update({ ended_at: new Date().toISOString() })
-    .eq('cashier_id', id)
-    .is('ended_at', null);
-
-  // Pindah outlet + buat riwayat baru
-  const { error: updateError } = await supabase
-    .from('cashier')
-    .update({ outlet_id: parsed.data.outletId })
-    .eq('id', id);
-
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 400 });
-  }
-
-  await supabase
-    .from('cashier_outlet_history')
-    .insert({ cashier_id: id, outlet_id: parsed.data.outletId });
-
-  return NextResponse.json({ success: true });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ cashier: data });
 }
+
+export const POST = withApiRoute(handlePOST);

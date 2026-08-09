@@ -1,23 +1,24 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
+const dateSchema = z.string().date();
 const sessionSchema = z.object({
   outletId: z.string().uuid(),
-  visitedDate: z.string(),
-  noteOutlet: z.string().optional().nullable(),
+  visitedDate: dateSchema,
+  noteOutlet: z.string().trim().max(2000).optional().nullable(),
   cashierNotes: z
     .array(
       z.object({
         cashierId: z.string().uuid(),
-        note: z.string().min(1),
+        note: z.string().trim().min(1).max(2000),
       })
     )
     .optional(),
 });
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal tidak valid');
 const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().optional(),
@@ -64,7 +65,7 @@ async function getAccessibleBranchIds(
   return { ids: (data ?? []).map((branch) => branch.branch_id), error };
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const user = await requirePermission('mentoring');
   const { searchParams } = new URL(request.url);
   const parsedQuery = listQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
@@ -156,7 +157,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const user = await requirePermission('mentoring');
   const body = await request.json().catch(() => null);
   const parsed = sessionSchema.safeParse(body);
@@ -164,34 +165,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-
-  // Validasi akses outlet via RLS (insert akan gagal jika tidak punya akses)
-  const { data: session, error } = await supabase
-    .from('mentoring_session')
-    .insert({
-      outlet_id: parsed.data.outletId,
-      conducted_by: user.id,
-      visited_date: parsed.data.visitedDate,
-      note_outlet: parsed.data.noteOutlet ?? null,
-    })
-    .select()
-    .single();
+  const supabase = await createAdminClient();
+  const { data: session, error } = await supabase.rpc('create_mentoring_session_atomic', {
+    p_outlet_id: parsed.data.outletId,
+    p_conducted_by: user.id,
+    p_visited_date: parsed.data.visitedDate,
+    p_note_outlet: parsed.data.noteOutlet ?? '',
+    p_cashier_notes: parsed.data.cashierNotes ?? [],
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Catat catatan per kasir
-  if (parsed.data.cashierNotes && parsed.data.cashierNotes.length > 0) {
-    const { error: notesError } = await supabase.from('mentoring_cashier_note').insert(
-      parsed.data.cashierNotes.map((n) => ({
-        session_id: session.id,
-        cashier_id: n.cashierId,
-        note: n.note,
-      }))
-    );
-
-    if (notesError) return NextResponse.json({ error: notesError.message }, { status: 400 });
-  }
-
   return NextResponse.json({ session }, { status: 201 });
 }
+
+export const GET = withApiRoute(handleGET);
+export const POST = withApiRoute(handlePOST);

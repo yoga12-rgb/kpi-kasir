@@ -30,7 +30,7 @@ export function PeriodForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Gagal membuka periode');
+        setError(getErrorMessage(data.error, 'Gagal membuka periode'));
         setLoading(false);
         return;
       }
@@ -53,7 +53,7 @@ export function PeriodForm() {
         required
       />
       <p className="text-xs text-surface-500">
-        Membuka periode baru otomatis menutup periode aktif sebelumnya.
+        Tutup periode aktif sebelumnya setelah preflight selesai sebelum membuka periode baru.
       </p>
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" fullWidth disabled={loading}>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ListSkeleton } from '@/components/ui/Feedback';
+import { ListSkeleton, Spinner } from '@/components/ui/Feedback';
 
 export interface DataListProps<T> {
   fetcher: (page: number, limit: number) => Promise<T[]>;
@@ -94,7 +94,7 @@ export function DataList<T>({ fetcher, renderItem, pageSize = 20, empty, keyExtr
       <div ref={sentinelRef} className="h-1" aria-hidden="true" />
       {loadingMore && (
         <div className="flex justify-center py-3">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-surface-300 border-t-primary-600" />
+          <Spinner className="h-5 w-5" />
         </div>
       )}
       {!hasMore && items.length > 0 && (

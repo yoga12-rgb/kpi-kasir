@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
-import { validateCategoryWeights } from '@/lib/categories';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const categorySchema = z.object({
-  name: z.string().min(2),
-  weight: z.number().min(0).max(100),
+  name: z.string().trim().min(2).max(100),
+  weight: z.number().finite().min(0).max(100),
 });
 
-export async function GET() {
+async function handleGET() {
   const supabase = await createClient();
   const { data } = await supabase.from('category').select('*, detail(count)').order('name');
   return NextResponse.json({ categories: data ?? [] });
 }
 
-export async function POST(request: Request) {
-  await requireRole(['admin']);
+async function handlePOST(request: Request) {
+  const profile = await requireRole(['admin']);
 
   const body = await request.json().catch(() => null);
   const parsed = categorySchema.safeParse(body);
@@ -24,23 +24,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
   }
 
-  const supabase = await createClient();
-
-  // Validasi total bobot
-  const { valid, total } = await validateCategoryWeights(supabase);
-  if (!valid) {
-    return NextResponse.json(
-      { error: `Total bobot harus 100% (saat ini ${total}%)` },
-      { status: 400 }
-    );
-  }
-
-  const { data, error } = await supabase
-    .from('category')
-    .insert({ name: parsed.data.name, weight: parsed.data.weight })
-    .select()
-    .single();
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase.rpc('admin_create_category', {
+    p_actor_id: profile.id,
+    p_name: parsed.data.name,
+    p_weight: parsed.data.weight,
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ category: data }, { status: 201 });
 }
+
+export const GET = withApiRoute(handleGET);
+export const POST = withApiRoute(handlePOST);

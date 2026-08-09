@@ -34,7 +34,7 @@ export function TransferForm({ cashierId, currentOutletId, outlets }: { cashierI
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Gagal mutasi');
+        setError(getErrorMessage(data.error, 'Gagal mutasi'));
         setLoading(false);
         return;
       }

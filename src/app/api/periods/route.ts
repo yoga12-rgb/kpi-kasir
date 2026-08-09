@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
-export async function GET() {
+async function handleGET() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('period')
@@ -13,7 +14,7 @@ export async function GET() {
   return NextResponse.json({ periods: data ?? [] });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const user = await requireRole(['admin']);
   const body = await request.json().catch(() => null);
 
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { data, error } = await supabase.rpc('open_period', {
       p_start_date: body.startDate,
       p_end_date: body.endDate,
@@ -38,3 +39,6 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const GET = withApiRoute(handleGET);
+export const POST = withApiRoute(handlePOST);

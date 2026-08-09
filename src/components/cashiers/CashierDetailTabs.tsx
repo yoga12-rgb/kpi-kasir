@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react';
 import { ArrowLeftRight, HandHelping, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,28 @@ export function CashierDetailTabs({ mutation, placement, mentoring }: CashierDet
 
   const activeContent =
     activeTab === 'mutation' ? mutation : activeTab === 'mentoring' ? mentoring : placement;
+  const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
+    mutation: null,
+    placement: null,
+    mentoring: null,
+  });
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, tabId: TabId) {
+    const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
+    if (currentIndex < 0) return;
+
+    let nextIndex = currentIndex;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === currentIndex) return;
+
+    event.preventDefault();
+    const nextTab = tabs[nextIndex].id;
+    setActiveTab(nextTab);
+    tabRefs.current[nextTab]?.focus();
+  }
 
   return (
     <div className="mt-4">
@@ -38,10 +60,16 @@ export function CashierDetailTabs({ mutation, placement, mentoring }: CashierDet
             <button
               key={id}
               type="button"
+              id={`cashier-tab-${id}`}
               role="tab"
               aria-selected={active}
-              aria-controls={`cashier-tabpanel-${id}`}
+              aria-controls="cashier-tabpanel"
+              tabIndex={active ? 0 : -1}
+              ref={(element) => {
+                tabRefs.current[id] = element;
+              }}
               onClick={() => setActiveTab(id)}
+              onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
                 'flex min-w-max flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50',
                 active
@@ -57,9 +85,10 @@ export function CashierDetailTabs({ mutation, placement, mentoring }: CashierDet
       </div>
 
       <div
-        id={`cashier-tabpanel-${activeTab}`}
+        id="cashier-tabpanel"
         role="tabpanel"
-        aria-label={tabs.find((tab) => tab.id === activeTab)?.label}
+        aria-labelledby={`cashier-tab-${activeTab}`}
+        tabIndex={0}
       >
         {activeContent}
       </div>

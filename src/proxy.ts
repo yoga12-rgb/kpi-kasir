@@ -1,16 +1,24 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import type { Database } from '@/types/database';
 
 const publicPaths = ['/', '/login', '/setup', '/invite'];
 const isPublicPath = (pathname: string) =>
   publicPaths.some((p) => pathname === p || (p === '/invite' && pathname.startsWith('/invite/')));
 
+function markPrivateResponse(response: NextResponse) {
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0, must-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Vary', 'Cookie');
+  return response;
+}
+
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -22,11 +30,11 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options),
           );
         },
       },
-    }
+    },
   );
 
   const {
@@ -35,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Setup wizard: hanya jika admin belum dibuat
+  // Setup wizard hanya tersedia sebelum admin pertama dibuat.
   if (pathname === '/setup') {
     const { data: setup } = await supabase
       .from('app_setup')
@@ -51,16 +59,12 @@ export async function middleware(request: NextRequest) {
     }
 
     if (user) {
-      // Jika sudah login tapi setup belum selesai (mis. admin terakhir dibuat manual)
-      const url = request.nextUrl.clone();
-      url.pathname = '/setup';
       return response;
     }
 
     return response;
   }
 
-  // Halaman publik (root, login, invite, setup)
   if (isPublicPath(pathname)) {
     if (user && (pathname === '/login' || pathname === '/setup')) {
       const url = request.nextUrl.clone();
@@ -68,19 +72,17 @@ export async function middleware(request: NextRequest) {
       url.search = '';
       return NextResponse.redirect(url);
     }
-    // Path '/' dibiarkan — page.tsx yang menentukan redirect (/setup vs /login).
     return response;
   }
 
-  // Semua halaman lain butuh login
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.search = '';
-    return NextResponse.redirect(url);
+    return markPrivateResponse(NextResponse.redirect(url));
   }
 
-  return response;
+  return markPrivateResponse(response);
 }
 
 export const config = {

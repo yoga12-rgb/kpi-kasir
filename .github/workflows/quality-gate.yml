@@ -1,0 +1,174 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:55421
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key
+  NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+  SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+  CRON_SECRET: ci-cron-secret-change-me
+  APP_ORIGIN_ALLOWLIST: http://127.0.0.1:3000
+  OPS_ENV: ci
+
+jobs:
+  static:
+    name: Typecheck, lint, test, build, API smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Verify generated database types
+        run: npm run test:types
+
+      - name: Operations environment preflight
+        run: npm run test:ops
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          nohup npm run start -- --hostname 127.0.0.1 > "$RUNNER_TEMP/kpi-kasir-next.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/kpi-kasir-next.pid"
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/kpi-kasir-next.log"
+          exit 1
+
+      - name: API contract smoke
+        env:
+          API_SMOKE_BASE_URL: http://127.0.0.1:3000
+        run: npm run test:api
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/kpi-kasir-next.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/kpi-kasir-next.pid")" || true
+          fi
+
+  database:
+    name: Database lint and security regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start isolated Supabase
+        run: supabase start
+
+      - name: Apply migrations and lint schema
+        run: |
+          supabase db reset
+          supabase db lint --local --level warning
+
+      - name: Run SQL security regression
+        run: npm run test:security
+
+      - name: Stop isolated Supabase
+        if: always()
+        run: supabase stop
+
+  browser:
+    name: Playwright critical path
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL || 'http://127.0.0.1:55421' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY || 'ci-anon-key' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY || 'ci-service-role-key' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          nohup npm run start -- --hostname 127.0.0.1 > "$RUNNER_TEMP/kpi-kasir-next.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/kpi-kasir-next.pid"
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/kpi-kasir-next.log"
+          exit 1
+
+      - name: Run critical path
+        env:
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          E2E_ACCESS_TOKEN: ${{ secrets.E2E_ACCESS_TOKEN }}
+          E2E_USER_ID: ${{ secrets.E2E_USER_ID }}
+          E2E_PWA: 'true'
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+        run: npm run test:e2e -- --workers=1
+
+      - name: Stop production server
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/kpi-kasir-next.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/kpi-kasir-next.pid")" || true
+          fi

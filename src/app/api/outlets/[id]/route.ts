@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, requirePermission } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
+import type { TablesUpdate } from '@/types/database';
 
 const updateSchema = z.object({
   branchId: z.string().uuid().optional(),
   name: z.string().min(2).optional(),
   is_active: z.boolean().optional(),
+  reason: z.string().trim().min(3).max(500).optional(),
 });
 
-export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await requirePermission('outlets.update');
   const { id } = await params;
   const body = await request.json().catch(() => null);
@@ -18,7 +21,28 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Data tidak valid' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  if (parsed.data.is_active !== undefined) {
+    if (profile.role !== 'admin') {
+      return NextResponse.json({ error: 'Hanya admin yang dapat mengubah status outlet' }, { status: 403 });
+    }
+    if (parsed.data.name !== undefined || parsed.data.branchId !== undefined) {
+      return NextResponse.json(
+        { error: 'Perubahan status harus dikirim terpisah dari perubahan data outlet' },
+        { status: 400 }
+      );
+    }
+    const adminSupabase = await createAdminClient();
+    const { data, error } = await adminSupabase.rpc('set_outlet_status_guarded', {
+      p_outlet_id: id,
+      p_is_active: parsed.data.is_active,
+      p_reason: parsed.data.reason ?? 'Status outlet diubah melalui panel admin',
+      p_actor_id: profile.id,
+    });
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ outlet: data });
+  }
+
+  const supabase = profile.role === 'admin' ? await createAdminClient() : await createClient();
   const { data: currentOutlet, error: currentOutletError } = await supabase
     .from('outlet')
     .select('id, branch_id')
@@ -49,7 +73,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     }
   }
 
-  const update: Record<string, unknown> = {};
+  const update: TablesUpdate<'outlet'> = {};
   if (profile.role === 'admin') {
     if (parsed.data.branchId) update.branch_id = parsed.data.branchId;
     if (parsed.data.name) update.name = parsed.data.name;
@@ -68,18 +92,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ outlet: { id, ...update } });
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+async function handleDELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireAdmin();
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await createAdminClient();
+  const body = await request.json().catch(() => null);
+  const reason = typeof body?.reason === 'string' ? body.reason : 'Dinonaktifkan melalui panel admin';
 
-  const { data, error } = await supabase
-    .from('outlet')
-    .update({ is_active: false })
-    .eq('id', id)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('set_outlet_status_guarded', {
+    p_outlet_id: id,
+    p_is_active: false,
+    p_reason: reason,
+    p_actor_id: profile.id,
+  });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ outlet: data });
 }
+
+export const PATCH = withApiRoute(handlePATCH);
+export const DELETE = withApiRoute(handleDELETE);

@@ -1,16 +1,30 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireRole } from '@/lib/auth/guards';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
-export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+const closeSchema = z.object({
+  overrideIncomplete: z.boolean().default(false),
+  overrideReason: z.string().trim().max(500).optional().nullable(),
+});
+
+async function handlePOST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireRole(['admin']);
   const { id } = await params;
+  const body = await request.json().catch(() => ({}));
+  const parsed = closeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Data penutupan tidak valid' }, { status: 400 });
+  }
 
   try {
-    const supabase = await createClient();
+    const supabase = await createAdminClient();
     const { error } = await supabase.rpc('close_period', {
       p_period_id: id,
       p_performed_by: user.id,
+      p_override_incomplete: parsed.data.overrideIncomplete,
+      p_override_reason: parsed.data.overrideReason ?? null,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -22,3 +36,5 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     );
   }
 }
+
+export const POST = withApiRoute(handlePOST);

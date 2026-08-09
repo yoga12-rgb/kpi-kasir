@@ -13,6 +13,11 @@ describe('normalizeScale', () => {
     expect(normalizeScale({ scaleValue: 10, scaleMax: 5 })).toBe(100);
   });
 
+  it('mempertahankan input desimal 0.1 dari slider', () => {
+    expect(normalizeScale({ scaleValue: 2.7, scaleMax: 10 })).toBe(27);
+    expect(normalizeScale({ scaleValue: 0.1, scaleMax: 1 })).toBe(10);
+  });
+
   it('melempar error jika scaleMax <= 0', () => {
     expect(() => normalizeScale({ scaleValue: 1, scaleMax: 0 })).toThrow(
       'scaleMax harus lebih besar dari 0'
@@ -30,6 +35,7 @@ describe('normalizeDeduction', () => {
   it('floor di 0 (tidak negatif)', () => {
     expect(normalizeDeduction(150)).toBe(0);
     expect(normalizeDeduction(100)).toBe(0);
+    expect(normalizeDeduction(100.1)).toBe(0);
   });
 });
 

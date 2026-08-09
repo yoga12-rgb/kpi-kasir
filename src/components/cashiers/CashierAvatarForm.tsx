@@ -101,7 +101,7 @@ export function CashierAvatarForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setToast({ message: data.error ?? 'Gagal mengunggah foto', variant: 'error' });
+        setToast({ message: getErrorMessage(data.error, 'Gagal mengunggah foto'), variant: 'error' });
         return;
       }
 

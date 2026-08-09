@@ -1,26 +1,24 @@
 import { NextResponse } from 'next/server';
 import { completeGoogleInvite, getInviteByToken } from '@/lib/invites';
 import { createClient } from '@/lib/supabase/server';
-
-function getSafeNext(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
-  return value;
-}
-
-function getRedirectOrigin(request: Request, origin: string) {
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  const isLocalEnv = process.env.NODE_ENV === 'development';
-
-  if (isLocalEnv || !forwardedHost) return origin;
-  return `https://${forwardedHost}`;
-}
+import { getSafeNext, resolveRedirectOrigin } from '@/lib/auth/redirect';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = getSafeNext(searchParams.get('next'));
   const googleInviteMatch = next.match(/^\/invite\/([A-Za-z0-9]+)\/google$/);
-  const redirectOrigin = getRedirectOrigin(request, origin);
+  const allowlist = (process.env.APP_ORIGIN_ALLOWLIST ?? process.env.NEXT_PUBLIC_APP_URL ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const redirectOrigin = resolveRedirectOrigin({
+    requestOrigin: origin,
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    forwardedProto: request.headers.get('x-forwarded-proto'),
+    allowedOrigins: allowlist,
+    isDevelopment: process.env.NODE_ENV === 'development',
+  });
 
   if (code) {
     const supabase = await createClient();

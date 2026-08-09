@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { withApiRoute } from '@/lib/api/route';
 
 const assessmentSchema = z.object({
   periodId: z.string().uuid(),
@@ -14,10 +15,10 @@ const assessmentSchema = z.object({
  * Input/update penilaian skala.
  * - Cek periode masih open.
  * - Cek detail tipe scale.
- * - Ambil scale_max dari detail_config_history (non-retroaktif) atau detail.
+ * - Ambil scale_max hanya dari detail_config_history snapshot periode.
  * - Hitung normalized_score via RPC compute_normalized_score.
  */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const user = await requirePermission('assessment');
   const body = await request.json().catch(() => null);
   const parsed = assessmentSchema.safeParse(body);
@@ -63,9 +64,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Detail tidak ditemukan' }, { status: 404 });
   }
 
+  const { data: historyConfig } = await supabase
+    .from('detail_config_history')
+    .select('scale_max, deduction_points, detail_type')
+    .eq('detail_id', parsed.data.detailId)
+    .eq('period_id', parsed.data.periodId)
+    .maybeSingle();
+
+  if (!historyConfig) {
+    return NextResponse.json(
+      { error: 'Detail tidak termasuk konfigurasi snapshot periode ini' },
+      { status: 400 }
+    );
+  }
+
   // Detail tipe deduction: buat assessment awal dengan skor 100 (tanpa scale_value).
   // Kejadian deduksi dicatat lewat endpoint /api/assessments/[id]/deductions.
-  if (detail.type === 'deduction') {
+  if ((historyConfig.detail_type ?? detail.type) === 'deduction') {
     const { data, error } = await supabase
       .from('assessment')
       .upsert(
@@ -87,15 +102,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ assessment: data });
   }
 
-  // Konfigurasi detail untuk periode (non-retroaktif)
-  const { data: historyConfig } = await supabase
-    .from('detail_config_history')
-    .select('scale_max')
-    .eq('detail_id', parsed.data.detailId)
-    .eq('period_id', parsed.data.periodId)
-    .maybeSingle();
-
-  const scaleMax = historyConfig?.scale_max ?? detail.scale_max;
+  // Konfigurasi detail berasal dari snapshot periode, bukan detail live.
+  const scaleMax = historyConfig.scale_max;
 
   if (!scaleMax || scaleMax <= 0) {
     return NextResponse.json({ error: 'Konfigurasi skala tidak valid' }, { status: 400 });
@@ -138,6 +146,9 @@ export async function POST(request: Request) {
   return NextResponse.json({ assessment: data });
 }
 
-export async function PATCH(request: Request) {
-  return POST(request);
+async function handlePATCH(request: Request) {
+  return handlePOST(request);
 }
+
+export const POST = withApiRoute(handlePOST);
+export const PATCH = withApiRoute(handlePATCH);

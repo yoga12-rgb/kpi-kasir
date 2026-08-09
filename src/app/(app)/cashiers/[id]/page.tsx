@@ -82,6 +82,15 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
     .eq('cashier_id', cashier.id)
     .order('started_at', { ascending: false });
 
+  const { data: statusHistories } =
+    profile.role === 'admin'
+      ? await supabase
+          .from('cashier_status_history')
+          .select('*, changed_by(full_name)')
+          .eq('cashier_id', cashier.id)
+          .order('effective_at', { ascending: false })
+      : { data: [] };
+
   // Riwayat pendampingan (dari mentoring_cashier_note)
   const { data: mentoringNotes } = canMentor
     ? await supabase
@@ -132,7 +141,7 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
                 cashierName={cashier.name}
                 outletName={outlet?.name ?? '-'}
                 isActive={cashier.is_active}
-                canDeactivate={profile.role === 'admin'}
+                canManageStatus={profile.role === 'admin'}
               />
             </div>
           </div>
@@ -243,6 +252,38 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
                 <p className="text-surface-500">Belum ada riwayat.</p>
               )}
             </div>
+
+            {profile.role === 'admin' && (
+              <div className="mt-5 border-t border-surface-200 pt-4">
+                <h3 className="mb-3 text-sm font-semibold text-surface-800">Riwayat Status</h3>
+                <div className="space-y-2">
+                  {(statusHistories ?? []).map((statusHistory) => {
+                    const changedBy = statusHistory.changed_by as unknown as {
+                      full_name: string;
+                    } | null;
+                    return (
+                      <div
+                        key={statusHistory.id}
+                        className="rounded-lg border border-surface-100 px-3 py-2 text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-medium text-surface-800">
+                            {statusHistory.is_active ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <span className="text-surface-500">
+                            {formatDate(statusHistory.effective_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-surface-600">{statusHistory.reason}</p>
+                        {changedBy?.full_name && (
+                          <p className="mt-1 text-surface-400">oleh {changedBy.full_name}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
         }
         mentoring={
