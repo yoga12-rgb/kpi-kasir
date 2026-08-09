@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, requirePermission } from '@/lib/auth/guards';
@@ -60,17 +61,27 @@ async function handlePOST(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('branch')
-    .insert({ name: parsed.data.name, code: parsed.data.code ?? null })
-    .select()
-    .single();
+  const branch = {
+    id: randomUUID(),
+    name: parsed.data.name,
+    code: parsed.data.code ?? null,
+  };
+  const { error } = await supabase.from('branch').insert(branch);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'Kode cabang sudah digunakan' }, { status: 409 });
+    }
+    console.error('[branches] insert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json({ error: 'Cabang tidak dapat disimpan' }, { status: 500 });
   }
 
-  return NextResponse.json({ branch: data }, { status: 201 });
+  return NextResponse.json({ branch }, { status: 201 });
 }
 
 export const GET = withApiRoute(handleGET);
