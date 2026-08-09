@@ -27,7 +27,6 @@ export function OutletForm({ branchId }: { branchId: string }) {
       const data = await res.json();
       if (!res.ok) {
         setError(getErrorMessage(data.error, 'Gagal menyimpan'));
-        setLoading(false);
         return;
       }
 
@@ -35,6 +34,7 @@ export function OutletForm({ branchId }: { branchId: string }) {
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
       setLoading(false);
     }
   }
