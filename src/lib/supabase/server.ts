@@ -31,14 +31,29 @@ export async function createClient() {
 
 export async function createAdminClient() {
   const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  // New Supabase secret keys are opaque API keys, not JWTs. They must stay in
+  // `apikey` and cannot also be sent as `Authorization: Bearer ...`.
+  const adminFetch = serviceKey.startsWith('sb_secret_')
+    ? (input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = new Headers(init?.headers);
+        if (headers.get('Authorization') === `Bearer ${serviceKey}`) {
+          headers.delete('Authorization');
+        }
+        return fetch(input, { ...init, headers });
+      }
+    : undefined;
+
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    serviceKey,
     {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
+      ...(adminFetch ? { global: { fetch: adminFetch } } : {}),
     }
   );
 }
