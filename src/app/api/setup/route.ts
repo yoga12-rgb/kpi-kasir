@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -13,6 +13,53 @@ const setupSchema = z.object({
 
 function setupError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
+}
+
+function getServiceKeyDiagnostics() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+  const kind = serviceKey.startsWith('eyJ')
+    ? 'legacy-jwt'
+    : serviceKey.startsWith('sb_secret_')
+      ? 'secret'
+      : serviceKey
+        ? 'other'
+        : 'missing';
+
+  return {
+    configured: serviceKey.length > 0,
+    kind,
+    length: serviceKey.length,
+    fingerprint: serviceKey
+      ? createHash('sha256').update(serviceKey).digest('hex').slice(0, 16)
+      : null,
+  };
+}
+
+function logSetupError(stage: string, error: unknown) {
+  const value = error && typeof error === 'object' ? (error as Record<string, unknown>) : {};
+
+  console.error(`[setup] ${stage} failed`, {
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
+    serviceKey: getServiceKeyDiagnostics(),
+    error: {
+      code: typeof value.code === 'string' ? value.code : null,
+      status:
+        typeof value.status === 'number' || typeof value.status === 'string'
+          ? value.status
+          : null,
+      message: typeof value.message === 'string' ? value.message : 'Unknown remote error',
+      details: typeof value.details === 'string' ? value.details : null,
+      hint: typeof value.hint === 'string' ? value.hint : null,
+    },
+  });
+}
+
+async function releaseSetup(
+  supabase: Awaited<ReturnType<typeof createAdminClient>>,
+  claimId: string
+) {
+  const { error } = await supabase.rpc('release_setup', { p_claim_id: claimId });
+  if (error) logSetupError('release_setup', error);
 }
 
 async function handlePOST(request: Request) {
@@ -33,6 +80,7 @@ async function handlePOST(request: Request) {
     p_claim_id: claimId,
   });
   if (claimError) {
+    logSetupError('reserve_setup', claimError);
     const message = claimError.message.toLowerCase();
     if (message.includes('sudah selesai')) return setupError('Setup sudah selesai', 409);
     if (message.includes('sedang diproses') || message.includes('terlalu banyak')) {
@@ -51,13 +99,15 @@ async function handlePOST(request: Request) {
   });
 
   if (authError) {
-    await supabase.rpc('release_setup', { p_claim_id: claimId });
+    logSetupError('create_user', authError);
+    await releaseSetup(supabase, claimId);
     return setupError('Akun admin tidak dapat dibuat. Periksa email dan coba lagi.', 400);
   }
 
   const userId = authUser.user?.id;
   if (!userId) {
-    await supabase.rpc('release_setup', { p_claim_id: claimId });
+    logSetupError('create_user', new Error('Supabase returned no user ID'));
+    await releaseSetup(supabase, claimId);
     return setupError('Akun admin tidak dapat dibuat', 500);
   }
 
@@ -69,9 +119,12 @@ async function handlePOST(request: Request) {
   });
 
   if (finalizeError) {
+    logSetupError('finalize_setup', finalizeError);
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId);
-    if (!deleteError) {
-      await supabase.rpc('release_setup', { p_claim_id: claimId });
+    if (deleteError) {
+      logSetupError('delete_incomplete_user', deleteError);
+    } else {
+      await releaseSetup(supabase, claimId);
     }
     return setupError('Setup admin gagal diselesaikan, silakan coba lagi.', 500);
   }
