@@ -111,7 +111,7 @@ export function UserManagementList({
                       current.map((item) => (item.id === user.id ? { ...item, role } : item))
                     );
                   }}
-                  className="h-9 rounded-lg border border-surface-300 bg-surface-50 px-2 text-sm font-medium text-surface-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-9 rounded-lg border border-surface-300 bg-surface-50 px-2 text-base font-medium text-surface-900 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm"
                   aria-label={`Role ${user.full_name}`}
                 >
                   <option value="admin">Admin</option>
