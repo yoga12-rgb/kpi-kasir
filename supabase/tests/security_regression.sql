@@ -364,7 +364,13 @@ select pg_temp.assert_true(
   and has_function_privilege('service_role', 'public.admin_update_category(uuid,uuid,text,numeric,boolean)', 'execute')
   and has_function_privilege('anon', 'public.admin_create_detail(uuid,uuid,text,public.detail_type,numeric,numeric)', 'execute') = false
   and has_function_privilege('authenticated', 'public.admin_create_detail(uuid,uuid,text,public.detail_type,numeric,numeric)', 'execute') = false
-  and has_function_privilege('service_role', 'public.admin_create_detail(uuid,uuid,text,public.detail_type,numeric,numeric)', 'execute'),
+  and has_function_privilege('service_role', 'public.admin_create_detail(uuid,uuid,text,public.detail_type,numeric,numeric)', 'execute')
+  and has_function_privilege('anon', 'public.admin_set_category_status(uuid,uuid,boolean,text)', 'execute') = false
+  and has_function_privilege('authenticated', 'public.admin_set_category_status(uuid,uuid,boolean,text)', 'execute') = false
+  and has_function_privilege('service_role', 'public.admin_set_category_status(uuid,uuid,boolean,text)', 'execute')
+  and has_function_privilege('anon', 'public.admin_set_detail_status(uuid,uuid,boolean,text)', 'execute') = false
+  and has_function_privilege('authenticated', 'public.admin_set_detail_status(uuid,uuid,boolean,text)', 'execute') = false
+  and has_function_privilege('service_role', 'public.admin_set_detail_status(uuid,uuid,boolean,text)', 'execute'),
   'category/detail configuration RPC harus service_role-only'
 );
 
@@ -798,6 +804,117 @@ select pg_temp.expect_error(
 );
 delete from public.detail where name = 'Security Added Detail';
 
+-- ---------- Assessment configuration archive ----------
+create temp table category_archive_baseline as
+select
+  (select count(*) from public.category_weight_history
+   where category_id = '50000000-0000-0000-0000-000000000001') as category_snapshot_count,
+  (select count(*) from public.detail_config_history
+   where category_id = '50000000-0000-0000-0000-000000000001') as detail_snapshot_count,
+  (select count(*) from public.assessment
+   where cashier_id = '40000000-0000-0000-0000-000000000001') as assessment_count,
+  (select coalesce(sum(normalized_score), 0) from public.assessment
+   where cashier_id = '40000000-0000-0000-0000-000000000001') as assessment_score_sum,
+  (select count(*) from public.deduction_event de
+   join public.assessment a on a.id = de.assessment_id
+   where a.cashier_id = '40000000-0000-0000-0000-000000000001') as deduction_count,
+  (select md5(category_scores::text)
+   from public.cashier_period_score
+   where period_id = '70000000-0000-0000-0000-000000000001'
+     and cashier_id = '40000000-0000-0000-0000-000000000001') as score_hash;
+
+select public.admin_set_category_status(
+  '10000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  false,
+  'Uji arsip kategori security'
+);
+select pg_temp.assert_true(
+  (select is_active = false from public.category
+   where id = '50000000-0000-0000-0000-000000000001')
+  and (select count(*) = 1 from public.audit_log
+       where entity_type = 'category'
+         and entity_id = '50000000-0000-0000-0000-000000000001'
+         and action = 'category.archived'
+         and after_data ->> 'reason' = 'Uji arsip kategori security'),
+  'archive kategori harus mengubah status dan mencatat audit'
+);
+
+select public.admin_set_category_status(
+  '10000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  true,
+  'Uji pemulihan kategori security'
+);
+select public.admin_set_detail_status(
+  '10000000-0000-0000-0000-000000000001',
+  '60000000-0000-0000-0000-000000000001',
+  false,
+  'Uji arsip detail security'
+);
+select public.admin_set_detail_status(
+  '10000000-0000-0000-0000-000000000001',
+  '60000000-0000-0000-0000-000000000001',
+  true,
+  'Uji pemulihan detail security'
+);
+select public.admin_set_category_status(
+  '10000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  false,
+  'Uji parent archived security'
+);
+select pg_temp.expect_error(
+  $$select public.admin_set_detail_status(
+    '10000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000001',
+    true,
+    'Restore detail tanpa parent')$$,
+  'restore detail pada parent archived harus ditolak',
+  'parent masih diarsipkan'
+);
+select public.admin_set_category_status(
+  '10000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  true,
+  'Uji pemulihan parent security'
+);
+
+select pg_temp.expect_error(
+  $$delete from public.category where id = '50000000-0000-0000-0000-000000000001'$$,
+  'hard delete kategori yang memiliki detail harus ditolak',
+  'violates foreign key constraint'
+);
+select pg_temp.expect_error(
+  $$delete from public.detail where id = '60000000-0000-0000-0000-000000000001'$$,
+  'hard delete detail yang memiliki assessment harus ditolak',
+  'violates foreign key constraint'
+);
+select pg_temp.assert_true(
+  (select category_snapshot_count from category_archive_baseline) =
+    (select count(*) from public.category_weight_history
+     where category_id = '50000000-0000-0000-0000-000000000001')
+  and (select detail_snapshot_count from category_archive_baseline) =
+    (select count(*) from public.detail_config_history
+     where category_id = '50000000-0000-0000-0000-000000000001')
+  and (select assessment_count from category_archive_baseline) =
+    (select count(*) from public.assessment
+     where cashier_id = '40000000-0000-0000-0000-000000000001')
+  and (select assessment_score_sum from category_archive_baseline) =
+    (select coalesce(sum(normalized_score), 0) from public.assessment
+     where cashier_id = '40000000-0000-0000-0000-000000000001')
+  and (select deduction_count from category_archive_baseline) =
+    (select count(*) from public.deduction_event de
+     join public.assessment a on a.id = de.assessment_id
+     where a.cashier_id = '40000000-0000-0000-0000-000000000001')
+  and (select score_hash from category_archive_baseline) =
+    (select md5(category_scores::text)
+     from public.cashier_period_score
+     where period_id = '70000000-0000-0000-0000-000000000001'
+       and cashier_id = '40000000-0000-0000-0000-000000000001'),
+  'archive restore tidak boleh mengubah snapshot assessment atau score'
+);
+
 update public.category set weight = 99
 where id = '50000000-0000-0000-0000-000000000001';
 select pg_temp.expect_error(
@@ -823,6 +940,22 @@ select pg_temp.expect_denied(
 select pg_temp.expect_denied(
   $$insert into public.detail (category_id, name, type, scale_max) values ('50000000-0000-0000-0000-000000000001', 'Direct Detail Write', 'scale', 5)$$,
   'authenticated tidak boleh menulis detail secara langsung'
+);
+select pg_temp.expect_denied(
+  $$select public.admin_set_category_status(
+    '10000000-0000-0000-0000-000000000002',
+    '50000000-0000-0000-0000-000000000001',
+    false,
+    'Unauthorized archive')$$,
+  'authenticated tidak boleh memanggil RPC archive kategori'
+);
+select pg_temp.expect_denied(
+  $$select public.admin_set_detail_status(
+    '10000000-0000-0000-0000-000000000002',
+    '60000000-0000-0000-0000-000000000001',
+    false,
+    'Unauthorized archive')$$,
+  'authenticated tidak boleh memanggil RPC archive detail'
 );
 reset role;
 

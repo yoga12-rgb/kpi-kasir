@@ -1278,6 +1278,53 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      admin_set_category_status: {
+        Args: {
+          p_actor_id: string;
+          p_category_id: string;
+          p_is_active: boolean;
+          p_reason: string;
+        };
+        Returns: {
+          created_at: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          updated_at: string;
+          weight: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'category';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      admin_set_detail_status: {
+        Args: {
+          p_actor_id: string;
+          p_detail_id: string;
+          p_is_active: boolean;
+          p_reason: string;
+        };
+        Returns: {
+          category_id: string;
+          created_at: string;
+          deduction_points: number | null;
+          id: string;
+          is_active: boolean;
+          name: string;
+          scale_max: number | null;
+          type: Database['public']['Enums']['detail_type'];
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'detail';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       admin_update_category: {
         Args: {
           p_actor_id: string;
