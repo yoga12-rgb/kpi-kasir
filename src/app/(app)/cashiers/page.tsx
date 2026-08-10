@@ -1,9 +1,9 @@
-import Link from 'next/link';
 import { ChevronRight, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import { PaginationControls } from '@/components/ui/PaginationControls';
+import { NavigationLink } from '@/components/ui/NavigationLink';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
@@ -31,7 +31,10 @@ export default async function CashiersPage({
 
   let query = supabase
     .from('cashier')
-    .select('*, outlet!inner(name, branch(name))', { count: 'exact' })
+    .select(
+      'id, name, avatar_url, is_active, employment_start_date, outlet_id, outlet!inner(name, branch(name))',
+      { count: 'exact' }
+    )
     .order('name')
     .range(from, to);
 
@@ -112,7 +115,12 @@ export default async function CashiersPage({
         {(cashiers ?? []).map((cashier) => {
           const outlet = cashier.outlet as unknown as { name: string; branch: { name: string } };
           return (
-            <Link key={cashier.id} href={`/cashiers/${cashier.id}`} className="block">
+            <NavigationLink
+              key={cashier.id}
+              href={`/cashiers/${cashier.id}`}
+              pendingIndicator
+              className="block"
+            >
               <Card className="flex items-center gap-3 transition-colors hover:bg-surface-100">
                 <CashierAvatar
                   name={cashier.name}
@@ -134,7 +142,7 @@ export default async function CashiersPage({
                 </div>
                 <ChevronRight className="h-5 w-5 text-surface-400" />
               </Card>
-            </Link>
+            </NavigationLink>
           );
         })}
         {(cashiers ?? []).length === 0 && (

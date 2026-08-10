@@ -12,7 +12,7 @@ export default async function PeriodsPage() {
 
   const { data: periods } = await supabase
     .from('period')
-    .select('*')
+    .select('id, label, start_date, end_date, status')
     .order('start_date', { ascending: false })
     .limit(24);
 

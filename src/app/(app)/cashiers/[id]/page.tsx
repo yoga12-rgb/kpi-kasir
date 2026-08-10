@@ -33,7 +33,7 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
 
   const { data: cashier } = await supabase
     .from('cashier')
-    .select('*, outlet(*, branch(name))')
+    .select('id, name, avatar_url, is_active, employment_start_date, outlet_id, outlet(id, name, branch_id, branch(id, name))')
     .eq('id', id)
     .single();
 
@@ -60,16 +60,16 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
   // Skor periode berjalan
   const { data: currentPeriod } = await supabase
     .from('period')
-    .select('*')
+    .select('id, start_date')
     .eq('status', 'open')
     .order('start_date', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const { data: periodScore } = currentPeriod
-    ? await supabase
-        .from('cashier_period_score')
-        .select('*')
+      ? await supabase
+          .from('cashier_period_score')
+        .select('total_score, category_scores')
         .eq('period_id', currentPeriod.id)
         .eq('cashier_id', cashier.id)
         .maybeSingle()
@@ -78,7 +78,7 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
   // Riwayat penempatan
   const { data: histories } = await supabase
     .from('cashier_outlet_history')
-    .select('*, outlet(name)')
+    .select('id, started_at, ended_at, outlet(name)')
     .eq('cashier_id', cashier.id)
     .order('started_at', { ascending: false });
 
@@ -86,7 +86,7 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
     profile.role === 'admin'
       ? await supabase
           .from('cashier_status_history')
-          .select('*, changed_by(full_name)')
+          .select('id, is_active, effective_at, reason, changed_by(full_name)')
           .eq('cashier_id', cashier.id)
           .order('effective_at', { ascending: false })
       : { data: [] };

@@ -1,10 +1,10 @@
-import Link from 'next/link';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { CategoryForm } from '@/components/categories/CategoryForm';
 import { requireRole } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { formatWeight } from '@/lib/utils';
+import { NavigationLink } from '@/components/ui/NavigationLink';
 
 export default async function CategoriesPage() {
   await requireRole(['admin']);
@@ -12,7 +12,7 @@ export default async function CategoriesPage() {
 
   const { data: categories } = await supabase
     .from('category')
-    .select('*, detail(count)')
+    .select('id, name, weight, is_active, detail(count)')
     .eq('is_active', true)
     .order('name');
 
@@ -46,7 +46,12 @@ export default async function CategoriesPage() {
 
         <div className="mt-4 space-y-3">
           {(categories ?? []).map((category) => (
-            <Link key={category.id} href={`/settings/categories/${category.id}`} className="block">
+            <NavigationLink
+              key={category.id}
+              href={`/settings/categories/${category.id}`}
+              pendingIndicator
+              className="block"
+            >
               <Card className="transition-colors hover:bg-surface-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -56,7 +61,7 @@ export default async function CategoriesPage() {
                   <Badge variant="info">{formatWeight(Number(category.weight))}</Badge>
                 </div>
               </Card>
-            </Link>
+            </NavigationLink>
           ))}
           {(categories ?? []).length === 0 && (
             <p className="py-6 text-center text-sm text-surface-500">

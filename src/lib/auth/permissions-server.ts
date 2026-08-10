@@ -1,8 +1,9 @@
+import { cache } from 'react';
 import type { UserRole } from '@/types/database';
 import { createClient } from '@/lib/supabase/server';
 import { CONFIGURABLE_PERMISSIONS, type Permission } from './permissions';
 
-export async function getRolePermissions(role: UserRole): Promise<Permission[]> {
+export const getRolePermissions = cache(async (role: UserRole): Promise<Permission[]> => {
   if (role === 'admin') return [...CONFIGURABLE_PERMISSIONS];
 
   const supabase = await createClient();
@@ -17,4 +18,4 @@ export async function getRolePermissions(role: UserRole): Promise<Permission[]> 
   return (data ?? [])
     .map((row) => row.permission as Permission)
     .filter((permission) => (CONFIGURABLE_PERMISSIONS as readonly string[]).includes(permission));
-}
+});

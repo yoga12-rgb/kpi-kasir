@@ -35,9 +35,15 @@ async function handleGET(request: Request) {
     return NextResponse.json({ error: 'Foto tidak ditemukan' }, { status: 404 });
   }
 
+  const isVersionedAvatar = /\/avatar-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$/i.test(
+    path
+  );
+
   return new NextResponse(data, {
     headers: {
-      'Cache-Control': 'private, max-age=60, stale-while-revalidate=60',
+      'Cache-Control': isVersionedAvatar
+        ? 'private, max-age=31536000, immutable'
+        : 'private, max-age=60, stale-while-revalidate=60',
       'Content-Type': data.type || 'application/octet-stream',
     },
   });

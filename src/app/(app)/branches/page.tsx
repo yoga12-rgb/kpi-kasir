@@ -3,6 +3,7 @@ import { Plus, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { PaginationControls } from '@/components/ui/PaginationControls';
+import { NavigationLink } from '@/components/ui/NavigationLink';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { escapeIlike, getPageRange, getTotalPages, parsePage } from '@/lib/pagination';
@@ -22,7 +23,7 @@ export default async function BranchesPage({
 
   let query = supabase
     .from('branch')
-    .select('*, outlet(count)', { count: 'exact' })
+    .select('id, name, code, is_active, outlet(count)', { count: 'exact' })
     .order('name')
     .range(from, to);
   if (search) query = query.or(`name.ilike.%${escapeIlike(search)}%,code.ilike.%${escapeIlike(search)}%`);
@@ -75,7 +76,12 @@ export default async function BranchesPage({
 
       <div className="mt-4 space-y-3">
         {(branches ?? []).map((branch) => (
-          <Link key={branch.id} href={`/branches/${branch.id}`} className="block">
+          <NavigationLink
+            key={branch.id}
+            href={`/branches/${branch.id}`}
+            pendingIndicator
+            className="block"
+          >
             <Card className="transition-colors hover:bg-surface-100">
               <div className="flex items-center justify-between">
                 <div>
@@ -91,7 +97,7 @@ export default async function BranchesPage({
                 )}
               </div>
             </Card>
-          </Link>
+          </NavigationLink>
         ))}
         {(branches ?? []).length === 0 && (
           <p className="py-8 text-center text-sm text-surface-500">Belum ada cabang.</p>

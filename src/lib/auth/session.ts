@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import type { UserProfile } from '@/types/database';
 
@@ -7,7 +8,7 @@ export interface SessionUser {
   profile: UserProfile | null;
 }
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,10 +27,10 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     email: user.email,
     profile,
   };
-}
+});
 
-export async function getUserBranches(userId: string): Promise<string[]> {
+export const getUserBranches = cache(async (userId: string): Promise<string[]> => {
   const supabase = await createClient();
   const { data } = await supabase.from('user_branch').select('branch_id').eq('user_id', userId);
   return (data ?? []).map((ub) => ub.branch_id);
-}
+});

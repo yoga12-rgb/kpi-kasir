@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import {
   ClipboardCheck,
   Trophy,
@@ -11,6 +10,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { NavigationLink } from '@/components/ui/NavigationLink';
 import { requireUser } from '@/lib/auth/guards';
 import { hasPermission, type Permission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
@@ -96,7 +96,7 @@ export default async function MenuPage() {
           {items.map((item) => {
             const Icon = item.icon;
             return (
-              <Link key={item.href} href={item.href} className="block">
+              <NavigationLink key={item.href} href={item.href} pendingIndicator className="block">
                 <Card className="flex items-center gap-4 transition-colors hover:bg-surface-100">
                   <div
                     className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.color}`}
@@ -109,7 +109,7 @@ export default async function MenuPage() {
                   </div>
                   <ChevronRight className="h-5 w-5 text-surface-400" />
                 </Card>
-              </Link>
+              </NavigationLink>
             );
           })}
         </div>

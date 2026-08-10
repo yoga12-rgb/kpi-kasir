@@ -35,14 +35,12 @@ export default async function UsersPage({
     const escaped = escapeIlike(search);
     usersQuery = usersQuery.or(`full_name.ilike.%${escaped}%,email.ilike.%${escaped}%`);
   }
-  const { data: users, count: userCount } = await usersQuery;
-
-  const { data: branches } = await supabase
-    .from('branch')
-    .select('id, name, is_active')
-    .order('name');
-
-  const { invites, nextCursor: invitesNextCursor } = await listInvites({ limit: 20 });
+  const [{ data: users, count: userCount }, { data: branches }, { invites, nextCursor: invitesNextCursor }] =
+    await Promise.all([
+      usersQuery,
+      supabase.from('branch').select('id, name, is_active').order('name'),
+      listInvites({ limit: 20 }),
+    ]);
 
   const allBranches = branches ?? [];
   const activeBranches = allBranches.filter((branch) => branch.is_active !== false);

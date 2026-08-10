@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { NavigationLink } from '@/components/ui/NavigationLink';
 
 interface PaginationControlsProps {
   pathname: string;
@@ -33,14 +33,15 @@ export function PaginationControls({
   return (
     <nav className="flex items-center justify-between gap-3 pt-3" aria-label="Pagination">
       {page > 1 ? (
-        <Link
+        <NavigationLink
           href={previousHref}
+          pendingIndicator
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-100"
           aria-label="Halaman sebelumnya"
           title="Halaman sebelumnya"
         >
           <ChevronLeft className="h-4 w-4" />
-        </Link>
+        </NavigationLink>
       ) : (
         <span className="h-9 w-9" aria-hidden="true" />
       )}
@@ -48,14 +49,15 @@ export function PaginationControls({
         {page} / {totalPages}
       </span>
       {page < totalPages ? (
-        <Link
+        <NavigationLink
           href={nextHref}
+          pendingIndicator
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 text-surface-600 hover:bg-surface-100"
           aria-label="Halaman berikutnya"
           title="Halaman berikutnya"
         >
           <ChevronRight className="h-4 w-4" />
-        </Link>
+        </NavigationLink>
       ) : (
         <span className="h-9 w-9" aria-hidden="true" />
       )}
