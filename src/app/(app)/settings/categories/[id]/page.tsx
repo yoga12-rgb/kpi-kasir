@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { CategoryEditForm } from '@/components/categories/CategoryEditForm';
 import { DetailForm } from '@/components/categories/DetailForm';
 import { requireRole } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -20,6 +21,14 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
     .single();
 
   if (!category) notFound();
+
+  const { data: activeCategories } = await supabase
+    .from('category')
+    .select('id, weight')
+    .eq('is_active', true);
+  const otherActiveWeightTotal = (activeCategories ?? [])
+    .filter((activeCategory) => activeCategory.id !== category.id)
+    .reduce((total, activeCategory) => total + Number(activeCategory.weight), 0);
 
   return (
     <div className="p-4">
@@ -65,6 +74,16 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
           {(category.detail ?? []).length === 0 && (
             <p className="py-6 text-center text-sm text-surface-500">Belum ada detail.</p>
           )}
+        </div>
+
+        <div className="mt-6">
+          <h2 className="mb-3 text-lg font-semibold text-surface-900">Konfigurasi Kategori</h2>
+          <CategoryEditForm
+            categoryId={category.id}
+            initialName={category.name}
+            initialWeight={Number(category.weight)}
+            otherActiveWeightTotal={otherActiveWeightTotal}
+          />
         </div>
 
         <div className="mt-6">

@@ -17,6 +17,8 @@ export default async function CategoriesPage() {
     .order('name');
 
   const total = (categories ?? []).reduce((acc, c) => acc + Number(c.weight), 0);
+  const isBalanced = Math.abs(total - 100) < 0.001;
+  const remaining = Math.max(0, 100 - total);
 
   return (
     <div className="p-4">
@@ -26,16 +28,21 @@ export default async function CategoriesPage() {
         <div className="mt-4 flex items-center justify-between">
           <p className="text-sm text-surface-600">
             Total bobot:{' '}
-            <span className={Math.abs(total - 100) < 0.001 ? 'font-bold text-success-600' : 'font-bold text-danger-600'}>
+            <span className={isBalanced ? 'font-bold text-success-600' : 'font-bold text-warning-600'}>
               {formatWeight(total)}
             </span>
           </p>
-          {Math.abs(total - 100) < 0.001 ? (
+          {isBalanced ? (
             <Badge variant="success">Valid</Badge>
           ) : (
-            <Badge variant="danger">Harus 100%</Badge>
+            <Badge variant="warning">Sisa {formatWeight(remaining)}</Badge>
           )}
         </div>
+        {!isBalanced && (
+          <p className="mt-1 text-xs text-surface-500">
+            Lengkapi atau sesuaikan bobot hingga 100% sebelum membuka periode penilaian.
+          </p>
+        )}
 
         <div className="mt-4 space-y-3">
           {(categories ?? []).map((category) => (
@@ -60,7 +67,7 @@ export default async function CategoriesPage() {
 
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold text-surface-900">Tambah Kategori</h2>
-          <CategoryForm />
+          <CategoryForm activeWeightTotal={total} />
         </div>
     </div>
   );

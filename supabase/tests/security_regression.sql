@@ -729,21 +729,38 @@ set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
 
 update public.category
-set weight = 75
+set weight = 40
 where id = '50000000-0000-0000-0000-000000000001';
 select (public.admin_create_category(
-  '10000000-0000-0000-0000-000000000001', 'Security Added Category', 25
+  '10000000-0000-0000-0000-000000000001', 'Security Draft Category', 35
 )).id;
 select pg_temp.assert_true(
-  (select count(*) = 2 from public.category where is_active = true and weight > 0),
-  'create category harus menghitung proposed total setelah insert'
+  (select coalesce(sum(weight), 0) = 75 from public.category where is_active = true),
+  'create category harus mengizinkan konfigurasi bobot sementara di bawah 100'
+);
+select (public.admin_create_category(
+  '10000000-0000-0000-0000-000000000001', 'Security Completing Category', 25
+)).id;
+select pg_temp.assert_true(
+  (select count(*) = 3 from public.category where is_active = true and weight > 0)
+  and (select coalesce(sum(weight), 0) = 100 from public.category where is_active = true),
+  'kategori dapat dilengkapi bertahap sampai total 100'
 );
 select pg_temp.expect_error(
   $$select public.admin_create_category('10000000-0000-0000-0000-000000000001', 'Security Overflow Category', 1)$$,
   'create category yang membuat total lebih dari 100 harus ditolak',
-  'akan menjadi'
+  'melebihi 100'
 );
-delete from public.category where name = 'Security Added Category';
+select (public.admin_update_category(
+  '10000000-0000-0000-0000-000000000001',
+  '50000000-0000-0000-0000-000000000001',
+  null, 30, null
+)).id;
+select pg_temp.assert_true(
+  (select coalesce(sum(weight), 0) = 90 from public.category where is_active = true),
+  'update category harus mengizinkan konfigurasi bobot sementara di bawah 100'
+);
+delete from public.category where name in ('Security Draft Category', 'Security Completing Category');
 update public.category
 set weight = 100,
     name = 'Security Category'

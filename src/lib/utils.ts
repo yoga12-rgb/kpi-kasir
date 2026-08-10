@@ -56,7 +56,7 @@ export function formatScore(value: number | null | undefined): string {
 }
 
 export function formatWeight(value: number): string {
-  return `${value.toFixed(value % 1 === 0 ? 0 : 1)}%`;
+  return `${Number(value.toFixed(2))}%`;
 }
 
 export function getErrorMessage(error: unknown, fallback = 'Terjadi kesalahan yang tidak diketahui'): string {

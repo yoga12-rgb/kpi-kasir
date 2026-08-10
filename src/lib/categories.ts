@@ -16,6 +16,7 @@ export async function validateCategoryWeights(
 
 /**
  * Validasi total bobot saat mengubah satu kategori (tanpa menyimpan).
+ * Konfigurasi boleh sementara di bawah 100%, tetapi tidak boleh melebihinya.
  */
 export async function validateCategoryWeightChange(
   supabase: SupabaseClient,
@@ -31,5 +32,5 @@ export async function validateCategoryWeightChange(
   const others = current.filter((c) => c.id !== categoryId);
   const total = others.reduce((acc, c) => acc + Number(c.weight), 0) + newWeight;
 
-  return { valid: Math.abs(total - 100) < 0.001, total };
+  return { valid: total <= 100.001, total };
 }

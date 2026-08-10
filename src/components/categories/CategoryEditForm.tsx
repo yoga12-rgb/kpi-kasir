@@ -1,29 +1,42 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Info } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { getErrorMessage } from '@/lib/utils';
 
-interface CategoryFormProps {
-  activeWeightTotal: number;
+interface CategoryEditFormProps {
+  categoryId: string;
+  initialName: string;
+  initialWeight: number;
+  otherActiveWeightTotal: number;
 }
 
-export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
+export function CategoryEditForm({
+  categoryId,
+  initialName,
+  initialWeight,
+  otherActiveWeightTotal,
+}: CategoryEditFormProps) {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [weight, setWeight] = useState('');
+  const [name, setName] = useState(initialName);
+  const [weight, setWeight] = useState(String(initialWeight));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setName(initialName);
+    setWeight(String(initialWeight));
+  }, [initialName, initialWeight]);
+
   const weightNum = Number(weight || 0);
-  const proposedTotal = activeWeightTotal + weightNum;
+  const proposedTotal = otherActiveWeightTotal + weightNum;
   const exceedsLimit = proposedTotal > 100.001;
   const remainingWeight = Math.max(0, 100 - proposedTotal);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     if (exceedsLimit) {
       setError(`Total bobot tidak boleh melebihi 100%. Kurangi ${Math.ceil((proposedTotal - 100) * 100) / 100}%.`);
       return;
@@ -33,20 +46,17 @@ export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
     setError(null);
 
     try {
-      const res = await fetch('/api/categories', {
-        method: 'POST',
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, weight: weightNum }),
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(getErrorMessage(data.error, 'Gagal menyimpan'));
+      const data = await response.json();
+      if (!response.ok) {
+        setError(getErrorMessage(data.error, 'Gagal memperbarui kategori'));
         return;
       }
 
-      setName('');
-      setWeight('');
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -60,10 +70,10 @@ export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
       <Input
         label="Nama Kategori"
         value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Contoh: Pelayanan"
+        onChange={(event) => setName(event.target.value)}
         required
         minLength={2}
+        maxLength={100}
       />
       <Input
         label="Bobot (%)"
@@ -72,25 +82,17 @@ export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
         max={100}
         step="0.01"
         value={weight}
-        onChange={(e) => setWeight(e.target.value)}
-        placeholder="Contoh: 25"
+        onChange={(event) => setWeight(event.target.value)}
         required
       />
       <p className={exceedsLimit ? 'text-xs text-danger-600' : 'text-xs text-surface-500'}>
         {exceedsLimit
-          ? `Total setelah ditambahkan ${proposedTotal.toFixed(2)}%. Kurangi bobot agar tidak melebihi 100%.`
-          : `Total setelah ditambahkan ${proposedTotal.toFixed(2)}%. Sisa bobot ${remainingWeight.toFixed(2)}%.`}
-      </p>
-      <p className="flex items-start gap-1.5 text-xs text-surface-500">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-600" />
-        <span>
-          Total bobot harus tepat <strong>100%</strong> sebelum periode dapat dibuka. Perubahan bobot berlaku mulai{' '}
-          <strong>periode berikutnya</strong> (tidak retroaktif).
-        </span>
+          ? `Total aktif akan menjadi ${proposedTotal.toFixed(2)}%. Kurangi bobot agar tidak melebihi 100%.`
+          : `Total aktif setelah disimpan ${proposedTotal.toFixed(2)}%. Sisa bobot ${remainingWeight.toFixed(2)}%.`}
       </p>
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" fullWidth disabled={loading || exceedsLimit}>
-        {loading ? 'Menyimpan...' : 'Tambah Kategori'}
+        {loading ? 'Menyimpan...' : 'Simpan Kategori'}
       </Button>
     </form>
   );
