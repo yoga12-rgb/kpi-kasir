@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withApiRoute } from '@/lib/api/route';
 import { getCronContext } from '@/lib/cron/auth';
+import { classifyEvidenceCleanupAbort } from '@/lib/mentoring/evidence-cleanup';
 import {
   isMentoringEvidencePathFor,
   MENTORING_EVIDENCE_BUCKET,
@@ -38,6 +39,7 @@ async function handleGET(request: Request) {
     if (lookupError) throw lookupError;
 
     let removed = 0;
+    let alreadyRemoved = 0;
     let failed = 0;
     for (const row of staleRows ?? []) {
       const pathMatch = row.object_path.match(MENTORING_EVIDENCE_PATH);
@@ -61,15 +63,44 @@ async function handleGET(request: Request) {
       const { data: aborted, error: abortError } = await supabase.rpc('abort_mentoring_evidence', {
         p_evidence_id: row.id,
       });
-      if (abortError || aborted !== true) {
+      if (abortError) {
         failed += 1;
         console.error(`[cron:${invocationId}] evidence row cleanup failed`, {
           evidenceId: row.id,
-          error: Boolean(abortError),
+          error: true,
         });
         continue;
       }
-      removed += 1;
+
+      let remainingStatus: string | null = null;
+      if (aborted !== true) {
+        const { data: remainingRow, error: stateError } = await supabase
+          .from('mentoring_evidence')
+          .select('status')
+          .eq('id', row.id)
+          .maybeSingle();
+        if (stateError) {
+          failed += 1;
+          console.error(`[cron:${invocationId}] evidence row state check failed`, {
+            evidenceId: row.id,
+          });
+          continue;
+        }
+        remainingStatus = remainingRow?.status ?? null;
+      }
+
+      const outcome = classifyEvidenceCleanupAbort(aborted === true, remainingStatus);
+      if (outcome === 'removed') {
+        removed += 1;
+      } else if (outcome === 'already_removed') {
+        alreadyRemoved += 1;
+      } else {
+        failed += 1;
+        console.error(`[cron:${invocationId}] evidence row cleanup incomplete`, {
+          evidenceId: row.id,
+          status: remainingStatus,
+        });
+      }
     }
 
     const { count: remaining, error: remainingError } = await supabase
@@ -82,6 +113,7 @@ async function handleGET(request: Request) {
     console.info(`[cron:${invocationId}] mentoring evidence cleanup completed`, {
       scanned: staleRows?.length ?? 0,
       removed,
+      alreadyRemoved,
       failed,
       remaining: remaining ?? 0,
       durationMs: Date.now() - startedAt,
@@ -93,6 +125,7 @@ async function handleGET(request: Request) {
         invocationId,
         scanned: staleRows?.length ?? 0,
         removed,
+        alreadyRemoved,
         failed,
         remaining: remaining ?? 0,
       },
