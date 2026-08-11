@@ -13,6 +13,14 @@ const protectedRequests = [
   { path: '/api/users', method: 'GET' },
   { path: '/api/leaderboard', method: 'GET' },
   { path: '/api/mentoring-sessions', method: 'GET' },
+  {
+    path: '/api/mentoring-sessions/00000000-0000-0000-0000-000000000000/evidence',
+    method: 'POST',
+  },
+  {
+    path: '/api/mentoring-sessions/00000000-0000-0000-0000-000000000000/evidence/00000000-0000-0000-0000-000000000000',
+    method: 'GET',
+  },
   { path: '/api/notifications', method: 'GET' },
   { path: '/api/periods', method: 'GET' },
   {

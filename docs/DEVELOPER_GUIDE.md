@@ -202,39 +202,42 @@ live, sehingga perubahan nama/aktif/parameter tidak mengubah periode yang sudah 
 
 ## 9. API Catalog
 
-| Endpoint                                  | Method                | Guard / tujuan                            |
-| ----------------------------------------- | --------------------- | ----------------------------------------- |
-| `/api/setup`                              | POST                  | setup admin pertama                       |
-| `/api/branches`                           | GET/POST              | lihat paginated/filter; tambah admin      |
-| `/api/branches/[id]`                      | PATCH/DELETE          | admin                                     |
-| `/api/outlets`                            | GET/POST              | lihat paginated/filter; tambah sesuai scope |
-| `/api/outlets/[id]`                       | PATCH/DELETE          | edit permission; delete admin             |
-| `/api/cashiers`                           | GET/POST              | lihat paginated/filter; tambah sesuai scope |
-| `/api/cashiers/[id]`                      | PATCH/DELETE          | edit nama permission; nonaktifkan admin   |
-| `/api/cashiers/[id]/status`               | PATCH                 | aktif/nonaktif atomic; admin              |
-| `/api/cashiers/[id]/transfer`             | POST                  | mutasi admin                              |
-| `/api/cashiers/[id]/avatar`               | POST                  | upload/ganti foto dan signed access       |
-| `/api/categories`, `/api/categories/[id]` | GET/POST/PATCH/DELETE | admin untuk mutasi                        |
-| `/api/categories/[id]/details`            | GET/POST              | admin untuk mutasi                        |
-| `/api/assessments`                        | POST/PATCH            | input skala/deduksi                       |
-| `/api/assessments/[id]/deductions`        | POST                  | catat event deduksi                       |
-| `/api/deductions/[id]`                    | DELETE                | hapus event deduksi                       |
-| `/api/periods`                            | GET/POST              | daftar; buka admin                        |
-| `/api/periods/[id]/preflight`             | GET                   | preview kesiapan close; admin             |
-| `/api/periods/[id]/close`                 | POST                  | tutup admin; optional incomplete override  |
-| `/api/periods/[id]/roster`                | POST                  | tambah kasir mid-period; admin             |
-| `/api/periods/current`                    | GET                   | periode open                              |
-| `/api/leaderboard`                        | GET                   | level/mode/period/filter scope-aware       |
-| `/api/mentoring-sessions`                 | GET/POST              | list cursor dan catat sesi                |
-| `/api/notifications`                      | GET                   | feed cursor, unread count; user sendiri   |
-| `/api/notifications/[id]`                 | PATCH                 | tandai satu notification terbaca          |
-| `/api/notifications/read-all`             | POST                  | tandai semua notification user terbaca    |
-| `/api/invites`                            | GET/POST              | admin                                     |
-| `/api/invites/[token]`                    | GET                   | baca invite dengan token                  |
-| `/api/invites/accept`                     | POST                  | registrasi password                       |
-| `/api/role-permissions`                   | GET/PATCH             | admin                                     |
+| Endpoint                                  | Method                | Guard / tujuan                                     |
+| ----------------------------------------- | --------------------- | -------------------------------------------------- |
+| `/api/setup`                              | POST                  | setup admin pertama                                |
+| `/api/branches`                           | GET/POST              | lihat paginated/filter; tambah admin               |
+| `/api/branches/[id]`                      | PATCH/DELETE          | admin                                              |
+| `/api/outlets`                            | GET/POST              | lihat paginated/filter; tambah sesuai scope        |
+| `/api/outlets/[id]`                       | PATCH/DELETE          | edit permission; delete admin                      |
+| `/api/cashiers`                           | GET/POST              | lihat paginated/filter; tambah sesuai scope        |
+| `/api/cashiers/[id]`                      | PATCH/DELETE          | edit nama permission; nonaktifkan admin            |
+| `/api/cashiers/[id]/status`               | PATCH                 | aktif/nonaktif atomic; admin                       |
+| `/api/cashiers/[id]/transfer`             | POST                  | mutasi admin                                       |
+| `/api/cashiers/[id]/avatar`               | POST                  | upload/ganti foto dan signed access                |
+| `/api/categories`, `/api/categories/[id]` | GET/POST/PATCH/DELETE | admin untuk mutasi                                 |
+| `/api/categories/[id]/details`            | GET/POST              | admin untuk mutasi                                 |
+| `/api/assessments`                        | POST/PATCH            | input skala/deduksi                                |
+| `/api/assessments/[id]/deductions`        | POST                  | catat event deduksi                                |
+| `/api/deductions/[id]`                    | DELETE                | hapus event deduksi                                |
+| `/api/periods`                            | GET/POST              | daftar; buka admin                                 |
+| `/api/periods/[id]/preflight`             | GET                   | preview kesiapan close; admin                      |
+| `/api/periods/[id]/close`                 | POST                  | tutup admin; optional incomplete override          |
+| `/api/periods/[id]/roster`                | POST                  | tambah kasir mid-period; admin                     |
+| `/api/periods/current`                    | GET                   | periode open                                       |
+| `/api/leaderboard`                        | GET                   | level/mode/period/filter scope-aware               |
+| `/api/mentoring-sessions`                 | GET/POST              | list cursor dan catat sesi                         |
+| `/api/mentoring-sessions/[id]/evidence`   | POST                  | upload bukti WebP; conductor/admin                 |
+| `/api/mentoring-sessions/[id]/evidence/[evidenceId]` | GET         | delivery foto protected dan ETag                  |
+| `/api/notifications`                      | GET                   | feed cursor, unread count; user sendiri            |
+| `/api/notifications/[id]`                 | PATCH                 | tandai satu notification terbaca                   |
+| `/api/notifications/read-all`             | POST                  | tandai semua notification user terbaca             |
+| `/api/invites`                            | GET/POST              | admin                                              |
+| `/api/invites/[token]`                    | GET                   | baca invite dengan token                           |
+| `/api/invites/accept`                     | POST                  | registrasi password                                |
+| `/api/role-permissions`                   | GET/PATCH             | admin                                              |
 | `/api/cron/periods`                       | POST                  | header `x-cron-secret`; optional `x-invocation-id` |
 | `/api/cron/notifications`                 | POST                  | header `x-cron-secret`; optional `x-invocation-id` |
+| `/api/cron/mentoring-evidence-cleanup`    | GET                   | Vercel Bearer cron; pending stale cleanup          |
 
 ## 10. Alur Fitur Penting
 
@@ -319,15 +322,16 @@ rate limit atau store terdistribusi sebelum dianggap kontrol tunggal.
 
 Salin `.env.example` menjadi `.env.local` dan isi:
 
-| Variable                        | Keterangan                                           |
-| ------------------------------- | ---------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`      | URL project Supabase                                 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | key publik dengan RLS                                |
-| `SUPABASE_SERVICE_ROLE_KEY`     | server-only, jangan expose                           |
-| `NEXT_PUBLIC_APP_URL`           | origin aplikasi untuk link invite dan fallback OAuth |
-| `APP_ORIGIN_ALLOWLIST`          | daftar origin OAuth production, dipisahkan koma      |
-| `CRON_SECRET`                   | secret panjang untuk cron                            |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`  | catatan opsional; provider dikonfigurasi di Supabase |
+| Variable                            | Keterangan                                            |
+| ----------------------------------- | ----------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`          | URL project Supabase                                  |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`     | key publik dengan RLS                                 |
+| `SUPABASE_SERVICE_ROLE_KEY`         | server-only, jangan expose                            |
+| `NEXT_PUBLIC_APP_URL`               | origin aplikasi untuk link invite dan fallback OAuth  |
+| `APP_ORIGIN_ALLOWLIST`              | daftar origin OAuth production, dipisahkan koma       |
+| `CRON_SECRET`                       | secret panjang untuk cron                             |
+| `MENTORING_EVIDENCE_UPLOAD_ENABLED` | `true` setelah migration dan Storage lulus smoke test |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID`      | catatan opsional; provider dikonfigurasi di Supabase  |
 
 ### Local Supabase
 

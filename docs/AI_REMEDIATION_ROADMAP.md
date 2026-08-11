@@ -9,16 +9,16 @@ step sebelumnya sudah dicatat di dokumen ini.
 
 ## 1. Identitas Dokumen
 
-| Field | Nilai |
-| --- | --- |
-| Versi dokumen | 1.0.42 |
-| Dibuat | 2026-08-09 14:19 WIB |
-| Terakhir diperbarui | 2026-08-09 19:19 WIB |
-| Baseline commit | `72e6cb3` |
-| Status produksi | `BLOCKED` sampai Milestone M1-M8 selesai |
-| Milestone aktif | M8.3 - Staging Dan Operational Readiness |
-| Step berikutnya | M8.3 - Staging Dan Operational Readiness |
-| Sumber audit | `docs/TECHNICAL_AUDIT.md` dan audit live database 2026-08-09 |
+| Field               | Nilai                                                        |
+| ------------------- | ------------------------------------------------------------ |
+| Versi dokumen       | 1.0.44                                                       |
+| Dibuat              | 2026-08-09 14:19 WIB                                         |
+| Terakhir diperbarui | 2026-08-11 21:23 WIB                                         |
+| Baseline commit     | `72e6cb3`                                                    |
+| Status produksi     | `BLOCKED` sampai Milestone M1-M8 selesai                     |
+| Milestone aktif     | M8.3 - Staging Dan Operational Readiness                     |
+| Step berikutnya     | M8.3 - Staging Dan Operational Readiness                     |
+| Sumber audit        | `docs/TECHNICAL_AUDIT.md` dan audit live database 2026-08-09 |
 
 Jika source code, database live, dan dokumen berbeda, urutan sumber kebenaran adalah:
 
@@ -72,13 +72,13 @@ Agent dilarang memulai step baru sebelum poin 1-9 selesai.
 
 ### 2.4 Status Yang Diizinkan
 
-| Status | Arti |
-| --- | --- |
-| `NOT_STARTED` | Belum dikerjakan |
-| `READY` | Dependensi selesai dan siap dikerjakan |
-| `IN_PROGRESS` | Sedang diimplementasikan atau diuji |
-| `BLOCKED` | Tidak dapat dilanjutkan; alasan dan kebutuhan keputusan wajib dicatat |
-| `COMPLETE` | Implementasi selesai dan semua acceptance criteria serta test gate lulus |
+| Status        | Arti                                                                     |
+| ------------- | ------------------------------------------------------------------------ |
+| `NOT_STARTED` | Belum dikerjakan                                                         |
+| `READY`       | Dependensi selesai dan siap dikerjakan                                   |
+| `IN_PROGRESS` | Sedang diimplementasikan atau diuji                                      |
+| `BLOCKED`     | Tidak dapat dilanjutkan; alasan dan kebutuhan keputusan wajib dicatat    |
+| `COMPLETE`    | Implementasi selesai dan semua acceptance criteria serta test gate lulus |
 
 Hanya satu step boleh berstatus `IN_PROGRESS`.
 
@@ -112,14 +112,14 @@ File orientasi utama:
 
 ### 4.1 Blocker Produksi Yang Sudah Dibuktikan
 
-| ID | Temuan | Bukti terbaru |
-| --- | --- | --- |
-| SEC-001 | `open_period`, `close_period`, dan rekalkulasi dapat dieksekusi `PUBLIC`, termasuk `anon` | `has_function_privilege(...)=true` pada DB lokal |
-| SEC-002 | User non-admin dapat mengubah role sendiri menjadi admin | Uji UPDATE dalam transaksi berhasil lalu di-rollback |
-| SEC-003 | Assessment lintas cabang dapat ditulis langsung | Uji manager terhadap assessment cabang lain berhasil lalu di-rollback |
-| SEC-004 | Policy write assessment, deduction, mentoring menggunakan `USING (true)` | Policy aktif diverifikasi dari `pg_policies` |
-| SEC-005 | `leaderboard_entry` menggunakan policy SELECT `USING (true)` | Migrasi dan policy live terverifikasi |
-| SEC-006 | Toggle edit nama kasir/outlet memberi akses update seluruh kolom | Uji perubahan `is_active` berhasil lalu di-rollback |
+| ID      | Temuan                                                                                    | Bukti terbaru                                                         |
+| ------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| SEC-001 | `open_period`, `close_period`, dan rekalkulasi dapat dieksekusi `PUBLIC`, termasuk `anon` | `has_function_privilege(...)=true` pada DB lokal                      |
+| SEC-002 | User non-admin dapat mengubah role sendiri menjadi admin                                  | Uji UPDATE dalam transaksi berhasil lalu di-rollback                  |
+| SEC-003 | Assessment lintas cabang dapat ditulis langsung                                           | Uji manager terhadap assessment cabang lain berhasil lalu di-rollback |
+| SEC-004 | Policy write assessment, deduction, mentoring menggunakan `USING (true)`                  | Policy aktif diverifikasi dari `pg_policies`                          |
+| SEC-005 | `leaderboard_entry` menggunakan policy SELECT `USING (true)`                              | Migrasi dan policy live terverifikasi                                 |
+| SEC-006 | Toggle edit nama kasir/outlet memberi akses update seluruh kolom                          | Uji perubahan `is_active` berhasil lalu di-rollback                   |
 
 Seluruh uji eksploitasi audit dilakukan di transaksi yang di-rollback. Tidak ada perubahan permanen.
 
@@ -233,17 +233,17 @@ High/critical baru tidak boleh diterima tanpa catatan risiko dan persetujuan use
 
 ## 7. Ringkasan Milestone
 
-| Milestone | Tujuan | Status | Release gate |
-| --- | --- | --- | --- |
-| M0 | Baseline audit dan verifikasi | `COMPLETE` | Audit, build, lint, unit test, DB lint tersedia |
-| M1 | Security containment | `COMPLETE` | Seluruh exploit P0 ditolak oleh test |
-| M2 | Auth, setup, invite, dan lifecycle user | `COMPLETE` | Signup/invite atomik dan user nonaktif benar-benar ditolak |
-| M3 | Transaksi data operasional | `COMPLETE` | Tidak ada partial write pada kasir, mutasi, mentoring, foto |
-| M4 | Integritas scoring dan periode | `COMPLETE` | Snapshot, completeness, dan close-period konsisten |
-| M5 | Leaderboard dan dashboard benar | `COMPLETE` | Data per periode/cabang dan metrik dashboard tervalidasi |
-| M6 | API, cron, performa, dan observability | `COMPLETE` | API contract, cron idempotent, list scalable |
-| M7 | UI, aksesibilitas, dan navigasi | `COMPLETE` | E2E viewport dan keyboard gate lulus |
-| M8 | Release hardening dan dokumentasi | `IN_PROGRESS` | Full regression lulus; staging smoke eksternal masih diperlukan |
+| Milestone | Tujuan                                  | Status        | Release gate                                                    |
+| --------- | --------------------------------------- | ------------- | --------------------------------------------------------------- |
+| M0        | Baseline audit dan verifikasi           | `COMPLETE`    | Audit, build, lint, unit test, DB lint tersedia                 |
+| M1        | Security containment                    | `COMPLETE`    | Seluruh exploit P0 ditolak oleh test                            |
+| M2        | Auth, setup, invite, dan lifecycle user | `COMPLETE`    | Signup/invite atomik dan user nonaktif benar-benar ditolak      |
+| M3        | Transaksi data operasional              | `COMPLETE`    | Tidak ada partial write pada kasir, mutasi, mentoring, foto     |
+| M4        | Integritas scoring dan periode          | `COMPLETE`    | Snapshot, completeness, dan close-period konsisten              |
+| M5        | Leaderboard dan dashboard benar         | `COMPLETE`    | Data per periode/cabang dan metrik dashboard tervalidasi        |
+| M6        | API, cron, performa, dan observability  | `COMPLETE`    | API contract, cron idempotent, list scalable                    |
+| M7        | UI, aksesibilitas, dan navigasi         | `COMPLETE`    | E2E viewport dan keyboard gate lulus                            |
+| M8        | Release hardening dan dokumentasi       | `IN_PROGRESS` | Full regression lulus; staging smoke eksternal masih diperlukan |
 
 ## 8. Milestone M1 - Security Containment
 
@@ -869,7 +869,7 @@ Implementasi:
   diverifikasi sebelum handler, redirect dari guard diterjemahkan menjadi JSON `401/403`, dan
   request diberi `requestId` pada body/header.
 - Response error lama berbentuk string dinormalisasi ke envelope `{ error: { code, message,
-  requestId } }`; pesan teknis database/Auth disamarkan.
+requestId } }`; pesan teknis database/Auth disamarkan.
 - Endpoint data yang sebelumnya tidak memanggil guard, termasuk periods current, sekarang ikut
   terlindungi oleh wrapper API. Setup, invite accept/detail, dan cron tetap public secara eksplisit
   lalu memiliki validasi masing-masing.
@@ -2288,12 +2288,18 @@ security regression, API smoke, production build, dan browser smoke sudah diveri
 lulus 8/8 pada Chromium desktop/mobile dengan user sementara dan cleanup terverifikasi; PWA cache
 hanya memuat asset publik dan tidak menyimpan API/private route.
 
-Belum dapat ditutup dari workspace ini: backup production nyata, restore ke staging, konfigurasi
-provider/redirect production, secret manager, edge rate limit, dan smoke memakai seluruh akun role
-staging. Jangan menandai COMPLETE sebelum operator mengisi bukti tersebut pada staging.
+Supabase staging `kpi-kasir-staging` (`fkanacflupmyuohkjque`) sudah tersedia dan menerima migrasi
+`0001..0058`. Riwayat lokal/remote selaras, dry-run pascamigrasi up-to-date, remote DB lint nol
+temuan, REST schema/RPC tersedia, dan bucket bukti foto private dengan batas 350 KiB WebP. Production
+tidak disentuh dan terakhir diverifikasi masih pada `0057`.
 
-- Backup sebelum migrasi production dan restore staging: menunggu akses environment.
-- Smoke seluruh role dan akun nonaktif: prosedur tersedia; eksekusi staging menunggu credential.
+Belum dapat ditutup dari workspace ini: Vercel Preview belum diarahkan ke staging, backup production
+nyata/restore drill belum ada, provider/redirect dan secret manager belum diverifikasi, serta smoke
+seluruh role staging belum dijalankan. Jangan menandai COMPLETE sebelum operator mengisi bukti
+tersebut pada staging.
+
+- Backup sebelum migrasi production dan restore drill: menunggu akses/keputusan operator.
+- Smoke seluruh role dan akun nonaktif: staging DB tersedia; menunggu Vercel Preview dan akun uji.
 - Auth providers, redirect, RLS, Storage, cron, environment secret: checklist tersedia; verifikasi
   production menunggu konfigurasi target.
 - Rollback migration/code dan maintenance notice: runbook tersedia.
@@ -2520,70 +2526,77 @@ Kondisi terakhir:
   M8.3.
 - M8.3 local gate selesai: production-browser PWA test memverifikasi registration, `CACHE_NAME`, asset
   publik, dan exclusion API/private route; bukti staging/production eksternal tetap belum tersedia.
+- M8.3 local gate diulang setelah fitur bukti Pendampingan: clean migration `0001..0058`, DB lint,
+  security regression, API smoke, 43 unit test, build, dan full E2E 17 pass/3 expected skip/0 fail.
+  Supabase staging kemudian menerima `0001..0058`; linked history sinkron, dry-run up-to-date, remote
+  lint nol temuan, REST/RPC tersedia, dan bucket private terverifikasi. Production tetap `0057`.
 - M8.1 selesai: 35 unit test, API contract smoke enam endpoint, SQL/RLS regression, dan authenticated
   plus public Playwright smoke lulus tanpa data production; PWA cache boundary lulus; gate terakhir
   browser lulus 8/8.
 - M8.2 selesai: `.github/workflows/quality-gate.yml` menjalankan generated-type verification,
   operations preflight, static, audit, build, API, database, RLS, dan browser/PWA gate. Authenticated
   CI membutuhkan secret user test non-production.
-- M8.3 masih IN_PROGRESS: runbook tersedia, tetapi backup/restore dan verifikasi provider/secret/
-  role staging-production belum dapat dilakukan tanpa akses environment.
+- M8.3 masih IN_PROGRESS: staging DB tersedia, tetapi Vercel Preview, backup/restore drill, serta
+  verifikasi provider/secret/role/device belum selesai.
 - M8.4 selesai: developer guide, technical audit, roadmap, dan operations runbook sinkron.
 
 Langkah berikutnya:
 
-1. Konfigurasikan user test non-production atau session harness sebagai CI secrets.
-2. Jalankan backup production dan restore ke staging sebelum migration release.
-3. Jalankan smoke test admin, manager, supervisor, dan inactive user pada staging.
-4. Verifikasi Auth provider/redirect, RLS, Storage private, cron secret, edge rate limit, dan PWA
+1. Arahkan Vercel Preview ke Supabase staging dan buat admin staging melalui `/setup`.
+2. Konfigurasikan user test non-production atau session harness sebagai CI secrets.
+3. Jalankan backup production dan restore drill sebelum migration release.
+4. Jalankan smoke test admin, manager, supervisor, dan inactive user pada staging.
+5. Verifikasi Auth provider/redirect, RLS, Storage private, cron secret, edge rate limit, dan PWA
    Cache Storage pada staging.
-5. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah semua check
+6. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah semua check
    eksternal lulus.
 
 ## 19. Log Perubahan Dokumen
 
-| Versi | Tanggal | Agent | Perubahan |
-| --- | --- | --- | --- |
-| 1.0.0 | 2026-08-09 | Codex | Dokumen awal, milestone M1-M8, test gate, dan handoff dibuat dari hasil audit terbaru |
-| 1.0.1 | 2026-08-09 | Codex | M1.1 selesai: RPC dikunci, caller admin dipindah ke service-role, test gate dan handoff M1.2 dicatat |
-| 1.0.2 | 2026-08-09 | Codex | M1.2 selesai: self role escalation ditutup, akun nonaktif diblokir lintas RLS/Storage, admin RPC dan audit log ditambahkan |
-| 1.0.3 | 2026-08-09 | Codex | M1.3 selesai: policy write permissive diganti operation-level, parent deduction/mentoring scope dikunci, test matrix dan handoff M1.4 dicatat |
-| 1.0.4 | 2026-08-09 | Codex | M1.4 selesai: leaderboard diisolasi per cabang, update cashier/outlet dibatasi name-only, mutation sensitif dipindah ke service-role route, handoff M1.5 dicatat |
-| 1.0.5 | 2026-08-09 | Codex | M1.5 selesai: security regression suite SQL deterministik, role matrix, rollback cleanup, runner Docker/psql, test gate, dan handoff M1.6 dicatat |
-| 1.0.6 | 2026-08-09 | Codex | M1.6 selesai: Next 16, PostCSS/Sharp aman, proxy convention, ESLint CLI flat config, production audit/build/smoke gate, residual risk dev dependency dan handoff M2.1 dicatat |
-| 1.0.7 | 2026-08-09 | Codex | M2.1 selesai: pending profile, email signup local disabled, activation eksplisit setup/invite/Google, Auth restart, regression assertion, dan handoff M2.2 dicatat |
-| 1.0.8 | 2026-08-09 | Codex | M2.2 selesai: consume invite atomik, revoke/regenerate/expiry, branch validation, cursor search, regression lifecycle, seluruh gate lulus, dan handoff M2.3 dicatat |
-| 1.0.9 | 2026-08-09 | Codex | M2.3 selesai: setup reservation/rate-limit/finalize/release, guard admin aktif forward-only, kompensasi Auth, regression race, seluruh gate lulus, dan handoff M2.4 dicatat |
-| 1.0.10 | 2026-08-09 | Codex | M2.4 selesai: seluruh API memakai JSON auth/error wrapper, protected endpoint smoke 401, OAuth origin allowlist, open-redirect test, seluruh gate lulus, dan handoff M3.1 dicatat |
-| 1.0.11 | 2026-08-09 | Codex | M3.1 selesai: cashier creation dan initial history atomik, unique active-history constraint, actor/branch/permission validation, regression security, seluruh gate lulus, dan handoff M3.2 dicatat |
-| 1.0.12 | 2026-08-09 | Codex | M3.2 selesai: transfer cashier atomik, row locks, effective timestamp, target validation, forward-only lint/clock correction, regression history, seluruh gate lulus, dan handoff M3.3 dicatat |
-| 1.0.13 | 2026-08-09 | Codex | M3.3 selesai: mentoring session dan seluruh notes atomik, payload/date/active-cashier validation, rollback regression, UUID correction, seluruh gate lulus, dan handoff M3.4 dicatat |
-| 1.0.14 | 2026-08-09 | Codex | M3.4 selesai: avatar decoder validation, private bucket limits, versioned replacement, compensating cleanup, proxy path hardening, seluruh gate lulus, dan handoff M3.5 dicatat |
+| Versi  | Tanggal    | Agent | Perubahan                                                                                                                                                                                                            |
+| ------ | ---------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0.0  | 2026-08-09 | Codex | Dokumen awal, milestone M1-M8, test gate, dan handoff dibuat dari hasil audit terbaru                                                                                                                                |
+| 1.0.1  | 2026-08-09 | Codex | M1.1 selesai: RPC dikunci, caller admin dipindah ke service-role, test gate dan handoff M1.2 dicatat                                                                                                                 |
+| 1.0.2  | 2026-08-09 | Codex | M1.2 selesai: self role escalation ditutup, akun nonaktif diblokir lintas RLS/Storage, admin RPC dan audit log ditambahkan                                                                                           |
+| 1.0.3  | 2026-08-09 | Codex | M1.3 selesai: policy write permissive diganti operation-level, parent deduction/mentoring scope dikunci, test matrix dan handoff M1.4 dicatat                                                                        |
+| 1.0.4  | 2026-08-09 | Codex | M1.4 selesai: leaderboard diisolasi per cabang, update cashier/outlet dibatasi name-only, mutation sensitif dipindah ke service-role route, handoff M1.5 dicatat                                                     |
+| 1.0.5  | 2026-08-09 | Codex | M1.5 selesai: security regression suite SQL deterministik, role matrix, rollback cleanup, runner Docker/psql, test gate, dan handoff M1.6 dicatat                                                                    |
+| 1.0.6  | 2026-08-09 | Codex | M1.6 selesai: Next 16, PostCSS/Sharp aman, proxy convention, ESLint CLI flat config, production audit/build/smoke gate, residual risk dev dependency dan handoff M2.1 dicatat                                        |
+| 1.0.7  | 2026-08-09 | Codex | M2.1 selesai: pending profile, email signup local disabled, activation eksplisit setup/invite/Google, Auth restart, regression assertion, dan handoff M2.2 dicatat                                                   |
+| 1.0.8  | 2026-08-09 | Codex | M2.2 selesai: consume invite atomik, revoke/regenerate/expiry, branch validation, cursor search, regression lifecycle, seluruh gate lulus, dan handoff M2.3 dicatat                                                  |
+| 1.0.9  | 2026-08-09 | Codex | M2.3 selesai: setup reservation/rate-limit/finalize/release, guard admin aktif forward-only, kompensasi Auth, regression race, seluruh gate lulus, dan handoff M2.4 dicatat                                          |
+| 1.0.10 | 2026-08-09 | Codex | M2.4 selesai: seluruh API memakai JSON auth/error wrapper, protected endpoint smoke 401, OAuth origin allowlist, open-redirect test, seluruh gate lulus, dan handoff M3.1 dicatat                                    |
+| 1.0.11 | 2026-08-09 | Codex | M3.1 selesai: cashier creation dan initial history atomik, unique active-history constraint, actor/branch/permission validation, regression security, seluruh gate lulus, dan handoff M3.2 dicatat                   |
+| 1.0.12 | 2026-08-09 | Codex | M3.2 selesai: transfer cashier atomik, row locks, effective timestamp, target validation, forward-only lint/clock correction, regression history, seluruh gate lulus, dan handoff M3.3 dicatat                       |
+| 1.0.13 | 2026-08-09 | Codex | M3.3 selesai: mentoring session dan seluruh notes atomik, payload/date/active-cashier validation, rollback regression, UUID correction, seluruh gate lulus, dan handoff M3.4 dicatat                                 |
+| 1.0.14 | 2026-08-09 | Codex | M3.4 selesai: avatar decoder validation, private bucket limits, versioned replacement, compensating cleanup, proxy path hardening, seluruh gate lulus, dan handoff M3.5 dicatat                                      |
 | 1.0.15 | 2026-08-09 | Codex | M3.5 selesai: cashier status history, atomic deactivation/reactivation, placement consistency, parent deactivation guards, inactive visibility isolation, admin filter, seluruh gate lulus, dan handoff M4.1 dicatat |
-| 1.0.16 | 2026-08-09 | Codex | M4.1 selesai: proposed category total validation, service-role config RPC, direct-write revocation, detail constraints, open-period preflight, seluruh gate lulus, dan handoff M4.2 dicatat |
-| 1.0.17 | 2026-08-09 | Codex | M4.2 selesai: snapshot metadata menjadi source of truth untuk recalc dan assessment, perubahan live tidak retroaktif, seluruh gate lulus, dan handoff M4.3 dicatat |
-| 1.0.18 | 2026-08-09 | Codex | M4.3 selesai: completion status, partial score tanpa full-credit fallback, dashboard/cron integration, seluruh gate lulus, dan handoff M4.4 dicatat |
-| 1.0.19 | 2026-08-09 | Codex | M4.4 selesai: roster snapshot, explicit mid-period admin flow, historical placement leaderboard, period selector, seluruh gate lulus, dan handoff M4.5 dicatat |
-| 1.0.20 | 2026-08-09 | Codex | M4.5 selesai: period preflight, unique open/overlap guard, admin incomplete override dengan audit log, idempotent close, cron rollover guard, migration `0047/0048`, seluruh gate lulus, dan handoff M4.6 dicatat |
-| 1.0.21 | 2026-08-09 | Codex | M4.6 selesai: regresi scoring desimal/floor, snapshot config, missing assessment, inactive cashier, transfer, duplicate close, historical rank, seluruh gate lulus, dan handoff M5.1 dicatat |
-| 1.0.22 | 2026-08-09 | Codex | M5.1 selesai: leaderboard query validation, branch/outlet scope, historical rank snapshot, stale request abort, error normalization, seluruh gate lulus, dan handoff M5.2 dicatat |
-| 1.0.23 | 2026-08-09 | Codex | M5.2 selesai: cursor keyset, stable tie-breaker, server search, pagination load-more, scoped CSV export, migration `0049`, seluruh gate lulus, dan handoff M5.3 dicatat |
-| 1.0.24 | 2026-08-09 | Codex | M5.3 selesai: dashboard role-aware, branch-scoped metrics, completion/score/invite/mentoring/unread action, explicit error/empty state, seluruh gate lulus, dan handoff M6.1 dicatat |
-| 1.0.25 | 2026-08-09 | Codex | M6.1 selesai: cron POST-only, constant-time header secret, invocation correlation, recipient eligibility, period-date ordering, notification dedupe, seluruh gate lulus, dan handoff M6.2 dicatat |
-| 1.0.26 | 2026-08-09 | Codex | M6.2 selesai: notification cursor feed, unread badge, mark-all-read atomik, retry/load-more, internal deep-link, RLS regression, migration `0052`, seluruh gate lulus, dan handoff M6.3 dicatat |
-| 1.0.27 | 2026-08-09 | Codex | M6.3 selesai: bounded pagination/filter domain list, cursor feed preservation, page-only signed avatar, helper pagination, migration `0053`, seluruh gate lulus, dan handoff M6.4 dicatat |
-| 1.0.28 | 2026-08-09 | Codex | M6.4 selesai: structured safe error, security headers/CSP, request ID validation, best-effort rate limit, client nested error handling, seluruh gate lulus, dan handoff M7.1 dicatat |
-| 1.0.29 | 2026-08-09 | Codex | M7.1 selesai: stable form IDs, describedby errors, modal focus trap/Escape/restore, async close guard, browser zoom, seluruh gate lulus, dan handoff M7.2 dicatat |
-| 1.0.30 | 2026-08-09 | Codex | M7.2 selesai: global skeleton dihapus, shell persisten, reduced-motion route transition, prefetch shell, seluruh quality gate lulus, dan handoff M7.3 dicatat |
-| 1.0.31 | 2026-08-09 | Codex | M7.3 selesai: responsive sidebar/bottom nav, safe-area, content width, stable nav ordering, seluruh quality gate lulus, dan handoff M7.4 dicatat |
-| 1.0.32 | 2026-08-09 | Codex | M7.4 selesai: toast lifecycle, shared loading state, reduced-motion feedback, keyboard tab semantics, seluruh quality gate lulus, dan handoff M7.5 dicatat |
-| 1.0.33 | 2026-08-09 | Codex | M7.5 selesai: PWA public-only cache, cache invalidation, protected no-store, registration production-only, seluruh quality gate lulus, dan handoff M8.1 dicatat |
-| 1.0.34 | 2026-08-09 | Codex | M8.1 selesai: permission/unit, API contract, SQL/RLS regression, authenticated/public Playwright critical path, dan test harness tanpa data production |
-| 1.0.35 | 2026-08-09 | Codex | M8.2 selesai: CI quality workflow untuk static, audit, build, API, database, RLS, dan browser gate |
-| 1.0.36 | 2026-08-09 | Codex | M8.3 dimulai: operations runbook, release/backup/rollback/role/cron/secret/PWA checklist; external staging evidence masih diperlukan |
-| 1.0.37 | 2026-08-09 | Codex | M8.4 diperbarui: generated database types dan compatibility aliases menutup P1-5; residual risk environment tetap dicatat |
-| 1.0.38 | 2026-08-09 | Codex | Gate akhir M8.1/M8.2 diulang dan lulus: typecheck, lint, 35 unit test, build, audit production, API, DB lint, security regression, operations preflight, dan E2E 6/6; Supabase dependency diselaraskan |
-| 1.0.39 | 2026-08-09 | Codex | Catatan handoff diperjelas: Supabase local mematikan external email/Google; authenticated E2E local memakai session harness dan provider production wajib diverifikasi pada M8.3 |
-| 1.0.40 | 2026-08-09 | Codex | PWA cache boundary ditambahkan ke E2E/CI dan lulus 8/8 desktop/mobile; hanya asset publik tercache, API/private route tervalidasi tidak tercache |
-| 1.0.41 | 2026-08-09 | Codex | Final gate diulang setelah PWA test: typecheck, lint, unit 35/35, build, audit, types, operations, DB lint, security regression, API smoke, dan E2E 8/8 lulus |
-| 1.0.42 | 2026-08-09 | Codex | Instruksi PWA runbook diperjelas untuk Bash dan PowerShell; tidak ada perubahan perilaku aplikasi |
+| 1.0.16 | 2026-08-09 | Codex | M4.1 selesai: proposed category total validation, service-role config RPC, direct-write revocation, detail constraints, open-period preflight, seluruh gate lulus, dan handoff M4.2 dicatat                          |
+| 1.0.17 | 2026-08-09 | Codex | M4.2 selesai: snapshot metadata menjadi source of truth untuk recalc dan assessment, perubahan live tidak retroaktif, seluruh gate lulus, dan handoff M4.3 dicatat                                                   |
+| 1.0.18 | 2026-08-09 | Codex | M4.3 selesai: completion status, partial score tanpa full-credit fallback, dashboard/cron integration, seluruh gate lulus, dan handoff M4.4 dicatat                                                                  |
+| 1.0.19 | 2026-08-09 | Codex | M4.4 selesai: roster snapshot, explicit mid-period admin flow, historical placement leaderboard, period selector, seluruh gate lulus, dan handoff M4.5 dicatat                                                       |
+| 1.0.20 | 2026-08-09 | Codex | M4.5 selesai: period preflight, unique open/overlap guard, admin incomplete override dengan audit log, idempotent close, cron rollover guard, migration `0047/0048`, seluruh gate lulus, dan handoff M4.6 dicatat    |
+| 1.0.21 | 2026-08-09 | Codex | M4.6 selesai: regresi scoring desimal/floor, snapshot config, missing assessment, inactive cashier, transfer, duplicate close, historical rank, seluruh gate lulus, dan handoff M5.1 dicatat                         |
+| 1.0.22 | 2026-08-09 | Codex | M5.1 selesai: leaderboard query validation, branch/outlet scope, historical rank snapshot, stale request abort, error normalization, seluruh gate lulus, dan handoff M5.2 dicatat                                    |
+| 1.0.23 | 2026-08-09 | Codex | M5.2 selesai: cursor keyset, stable tie-breaker, server search, pagination load-more, scoped CSV export, migration `0049`, seluruh gate lulus, dan handoff M5.3 dicatat                                              |
+| 1.0.24 | 2026-08-09 | Codex | M5.3 selesai: dashboard role-aware, branch-scoped metrics, completion/score/invite/mentoring/unread action, explicit error/empty state, seluruh gate lulus, dan handoff M6.1 dicatat                                 |
+| 1.0.25 | 2026-08-09 | Codex | M6.1 selesai: cron POST-only, constant-time header secret, invocation correlation, recipient eligibility, period-date ordering, notification dedupe, seluruh gate lulus, dan handoff M6.2 dicatat                    |
+| 1.0.26 | 2026-08-09 | Codex | M6.2 selesai: notification cursor feed, unread badge, mark-all-read atomik, retry/load-more, internal deep-link, RLS regression, migration `0052`, seluruh gate lulus, dan handoff M6.3 dicatat                      |
+| 1.0.27 | 2026-08-09 | Codex | M6.3 selesai: bounded pagination/filter domain list, cursor feed preservation, page-only signed avatar, helper pagination, migration `0053`, seluruh gate lulus, dan handoff M6.4 dicatat                            |
+| 1.0.28 | 2026-08-09 | Codex | M6.4 selesai: structured safe error, security headers/CSP, request ID validation, best-effort rate limit, client nested error handling, seluruh gate lulus, dan handoff M7.1 dicatat                                 |
+| 1.0.29 | 2026-08-09 | Codex | M7.1 selesai: stable form IDs, describedby errors, modal focus trap/Escape/restore, async close guard, browser zoom, seluruh gate lulus, dan handoff M7.2 dicatat                                                    |
+| 1.0.30 | 2026-08-09 | Codex | M7.2 selesai: global skeleton dihapus, shell persisten, reduced-motion route transition, prefetch shell, seluruh quality gate lulus, dan handoff M7.3 dicatat                                                        |
+| 1.0.31 | 2026-08-09 | Codex | M7.3 selesai: responsive sidebar/bottom nav, safe-area, content width, stable nav ordering, seluruh quality gate lulus, dan handoff M7.4 dicatat                                                                     |
+| 1.0.32 | 2026-08-09 | Codex | M7.4 selesai: toast lifecycle, shared loading state, reduced-motion feedback, keyboard tab semantics, seluruh quality gate lulus, dan handoff M7.5 dicatat                                                           |
+| 1.0.33 | 2026-08-09 | Codex | M7.5 selesai: PWA public-only cache, cache invalidation, protected no-store, registration production-only, seluruh quality gate lulus, dan handoff M8.1 dicatat                                                      |
+| 1.0.34 | 2026-08-09 | Codex | M8.1 selesai: permission/unit, API contract, SQL/RLS regression, authenticated/public Playwright critical path, dan test harness tanpa data production                                                               |
+| 1.0.35 | 2026-08-09 | Codex | M8.2 selesai: CI quality workflow untuk static, audit, build, API, database, RLS, dan browser gate                                                                                                                   |
+| 1.0.36 | 2026-08-09 | Codex | M8.3 dimulai: operations runbook, release/backup/rollback/role/cron/secret/PWA checklist; external staging evidence masih diperlukan                                                                                 |
+| 1.0.37 | 2026-08-09 | Codex | M8.4 diperbarui: generated database types dan compatibility aliases menutup P1-5; residual risk environment tetap dicatat                                                                                            |
+| 1.0.38 | 2026-08-09 | Codex | Gate akhir M8.1/M8.2 diulang dan lulus: typecheck, lint, 35 unit test, build, audit production, API, DB lint, security regression, operations preflight, dan E2E 6/6; Supabase dependency diselaraskan               |
+| 1.0.39 | 2026-08-09 | Codex | Catatan handoff diperjelas: Supabase local mematikan external email/Google; authenticated E2E local memakai session harness dan provider production wajib diverifikasi pada M8.3                                     |
+| 1.0.40 | 2026-08-09 | Codex | PWA cache boundary ditambahkan ke E2E/CI dan lulus 8/8 desktop/mobile; hanya asset publik tercache, API/private route tervalidasi tidak tercache                                                                     |
+| 1.0.41 | 2026-08-09 | Codex | Final gate diulang setelah PWA test: typecheck, lint, unit 35/35, build, audit, types, operations, DB lint, security regression, API smoke, dan E2E 8/8 lulus                                                        |
+| 1.0.42 | 2026-08-09 | Codex | Instruksi PWA runbook diperjelas untuk Bash dan PowerShell; tidak ada perubahan perilaku aplikasi                                                                                                                    |
+| 1.0.43 | 2026-08-11 | Codex | Gate lokal diulang untuk migration 0058 dan bukti foto: full E2E 17 pass/3 expected skip/0 fail; linked production read-only masih 0057 dan staging tetap menjadi blocker M8.3                                       |
+| 1.0.44 | 2026-08-11 | Codex | Supabase staging dibuat operasional: migrasi 0001..0058 sinkron, dry-run up-to-date, remote lint nol temuan, REST/RPC dan bucket private tervalidasi; Vercel Preview/role/device tetap gate M8.3                 |

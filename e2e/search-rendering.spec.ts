@@ -65,7 +65,7 @@ test.describe('search rendering', () => {
 
   test('Enter updates cashier results without document navigation', async ({ page }) => {
     await page.goto('/cashiers');
-    const search = page.getByLabel('Cari kasir');
+    const search = page.getByRole('textbox', { name: 'Cari kasir' });
     await expect(search).toBeVisible();
 
     const documentRequests: string[] = [];
@@ -84,6 +84,8 @@ test.describe('search rendering', () => {
 
     expect(documentRequests).toHaveLength(0);
     await expect(page).toHaveURL(/q=__search_rendering_probe__/);
-    await expect(page.getByLabel('Cari kasir')).toHaveValue('__search_rendering_probe__');
+    await expect(page.getByRole('textbox', { name: 'Cari kasir' })).toHaveValue(
+      '__search_rendering_probe__'
+    );
   });
 });

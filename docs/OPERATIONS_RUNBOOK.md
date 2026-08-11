@@ -32,6 +32,21 @@ Client Component, log, URL, screenshot, atau issue.
 `npm run test:ops` tidak melakukan mutation atau network request. Pada production jalankan dengan
 environment target yang sudah dimuat, lalu pastikan `APP_ORIGIN_ALLOWLIST` memuat origin aplikasi.
 
+### Staging Aktif
+
+Status 2026-08-11 21:23 WIB:
+
+- Supabase staging: `kpi-kasir-staging` (`fkanacflupmyuohkjque`), region `ap-northeast-2`.
+- Migrasi staging: lokal/remote sinkron `0001..0058`; dry-run up-to-date dan remote DB lint nol
+  temuan.
+- Bucket `mentoring-evidence`: private, maksimum 358400 byte, hanya `image/webp`.
+- Production `gxnlhtqnfgcbkfqoxpoa` tidak disentuh dan terakhir diverifikasi pada migrasi `0057`.
+- Vercel Preview belum dikonfigurasi. Jangan memakai key production pada Preview.
+
+Environment Vercel Preview wajib memakai URL dan API key dari staging, origin deployment Preview,
+`CRON_SECRET` khusus staging, serta `MENTORING_EVIDENCE_UPLOAD_ENABLED=false` untuk deploy pertama.
+Jangan mencatat nilai key atau secret di dokumen ini.
+
 ## Backup, Migration, And Rollback
 
 1. Catat release SHA, migration terakhir, operator, dan waktu maintenance.
@@ -60,8 +75,12 @@ incomplete, closed-period leaderboard, dan logout pada setiap release yang menye
 ## Cron And Monitoring
 
 Jadwalkan `POST /api/cron/periods` dan `POST /api/cron/notifications` dengan header
-`x-cron-secret`. Simpan `x-invocation-id`, status, durasi, dan response `requestId` pada log.
-Retry hanya untuk kegagalan transient. Dedupe notification dan closed-period operation harus tetap
+`x-cron-secret`. Vercel Cron mengirim `Authorization: Bearer <CRON_SECRET>`; format ini juga
+diterima oleh endpoint. Jadwalkan `GET /api/cron/mentoring-evidence-cleanup` untuk membersihkan
+row `pending` dan object yang stale lebih dari dua jam. Cleanup diproses batch maksimal 100 row,
+tidak pernah menghapus evidence `ready`, dan hanya menerima path object dengan format canonical.
+Simpan `x-invocation-id`, status, durasi, dan response `requestId` pada log. Retry hanya untuk
+kegagalan transient. Dedupe notification, closed-period operation, dan cleanup pending harus tetap
 idempotent.
 
 Alert minimum:
@@ -70,6 +89,25 @@ Alert minimum:
 - cron tidak berjalan atau menghasilkan error berulang;
 - kegagalan migration/build atau signed avatar URL;
 - perubahan role/status user di luar change window.
+
+Manual cleanup verification (staging first): gunakan `GET /api/cron/mentoring-evidence-cleanup`
+dengan `Authorization: Bearer $CRON_SECRET` dan simpan `x-invocation-id` serta response counts.
+Query read-only untuk capacity dan backlog:
+
+```sql
+select status, count(*) as objects, coalesce(sum(byte_size), 0) as bytes
+from public.mentoring_evidence
+group by status
+order by status;
+
+select count(*) as stale_pending
+from public.mentoring_evidence
+where status = 'pending'
+  and created_at < now() - interval '2 hours';
+```
+
+Jangan menghapus row `ready` atau object Storage secara manual untuk mengatasi backlog. Investigasi
+request ID/invocation ID dan jalankan cleanup ulang setelah error Storage transient pulih.
 
 ## User Deactivation And Secret Rotation
 

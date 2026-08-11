@@ -23,6 +23,28 @@ describe('cron auth', () => {
         })
       )
     ).toEqual({ authorized: true, invocationId: 'test-invocation' });
+
+    expect(
+      getCronContext(
+        new Request('http://localhost/api/cron/periods', {
+          headers: { authorization: 'Bearer cron-secret' },
+        })
+      ).authorized
+    ).toBe(true);
+    expect(
+      getCronContext(
+        new Request('http://localhost/api/cron/periods', {
+          headers: { authorization: 'Bearer cron-secret-extra' },
+        })
+      ).authorized
+    ).toBe(false);
+    expect(
+      getCronContext(
+        new Request('http://localhost/api/cron/periods', {
+          headers: { authorization: 'Basic cron-secret' },
+        })
+      ).authorized
+    ).toBe(false);
   });
 
   it('rejects empty configured or supplied secrets', () => {

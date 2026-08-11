@@ -56,6 +56,7 @@ export default async function NewMentoringPage() {
               })),
             }))}
             avatars={avatars}
+            evidenceUploadEnabled={process.env.MENTORING_EVIDENCE_UPLOAD_ENABLED === 'true'}
           />
         </div>
     </div>

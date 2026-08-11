@@ -343,6 +343,39 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.assert_true(
+  has_function_privilege('anon', 'public.reserve_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute') = false
+  and has_function_privilege('authenticated', 'public.reserve_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute') = false
+  and has_function_privilege('service_role', 'public.reserve_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute')
+  and has_function_privilege('anon', 'public.finalize_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute') = false
+  and has_function_privilege('authenticated', 'public.finalize_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute') = false
+  and has_function_privilege('service_role', 'public.finalize_mentoring_evidence(uuid,uuid,text,integer,integer,integer)', 'execute')
+  and has_function_privilege('anon', 'public.abort_mentoring_evidence(uuid)', 'execute') = false
+  and has_function_privilege('authenticated', 'public.abort_mentoring_evidence(uuid)', 'execute') = false
+  and has_function_privilege('service_role', 'public.abort_mentoring_evidence(uuid)', 'execute'),
+  'mentoring evidence RPC harus service_role-only'
+);
+
+select pg_temp.assert_true(
+  (select relrowsecurity from pg_class where oid = 'public.mentoring_evidence'::regclass)
+  and has_table_privilege('anon', 'public.mentoring_evidence', 'select') = false
+  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'select')
+  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'insert') = false
+  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'update') = false
+  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'delete') = false
+  and has_table_privilege('service_role', 'public.mentoring_evidence', 'select'),
+  'mentoring evidence harus memakai RLS dan mutasi hanya boleh melalui service role'
+);
+
+select pg_temp.assert_true(
+  (select public = false
+   and file_size_limit = 358400
+   and allowed_mime_types = array['image/webp']::text[]
+   from storage.buckets
+   where id = 'mentoring-evidence'),
+  'bucket bukti pendampingan harus private, WebP-only, dan maksimal 350 KiB'
+);
+
+select pg_temp.assert_true(
   has_function_privilege('anon', 'public.set_cashier_status_atomic(uuid,boolean,text,timestamptz,uuid)', 'execute') = false
   and has_function_privilege('authenticated', 'public.set_cashier_status_atomic(uuid,boolean,text,timestamptz,uuid)', 'execute') = false
   and has_function_privilege('service_role', 'public.set_cashier_status_atomic(uuid,boolean,text,timestamptz,uuid)', 'execute')
@@ -589,6 +622,130 @@ select pg_temp.assert_true(
          and n.note = 'Catatan valid'),
   'mentoring atomic harus membuat session dan note terkait'
 );
+
+select pg_temp.expect_error(
+  $$select public.reserve_mentoring_evidence(
+      (select id from public.mentoring_session where note_outlet = 'Security Atomic Mentoring'),
+      '10000000-0000-0000-0000-000000000003',
+      repeat('f', 64),
+      1024,
+      800,
+      600
+    )$$,
+  'manager lain tidak boleh mengunggah bukti ke sesi yang bukan miliknya',
+  'Hanya pencatat sesi'
+);
+
+do $security_mentoring_evidence$
+declare
+  v_session_id uuid;
+  v_first jsonb;
+  v_duplicate jsonb;
+  v_second jsonb;
+  v_third jsonb;
+  v_first_id uuid;
+begin
+  select id into strict v_session_id
+  from public.mentoring_session
+  where note_outlet = 'Security Atomic Mentoring';
+
+  v_first := public.reserve_mentoring_evidence(
+    v_session_id,
+    '10000000-0000-0000-0000-000000000002',
+    repeat('a', 64),
+    1024,
+    800,
+    600
+  );
+  v_first_id := (v_first -> 'evidence' ->> 'id')::uuid;
+
+  perform pg_temp.assert_true(
+    (v_first ->> 'was_existing')::boolean = false
+    and (v_first -> 'evidence' ->> 'status') = 'pending'
+    and (v_first -> 'evidence' ->> 'sort_order')::integer = 0
+    and (v_first -> 'evidence' ->> 'object_path') = format(
+      'session/%s/evidence-%s.webp',
+      v_session_id,
+      v_first_id
+    ),
+    'reservasi bukti harus memakai ID yang sama pada row dan object path'
+  );
+
+  perform public.finalize_mentoring_evidence(
+    v_first_id,
+    '10000000-0000-0000-0000-000000000002',
+    repeat('a', 64),
+    1024,
+    800,
+    600
+  );
+
+  perform pg_temp.assert_true(
+    exists (
+      select 1
+      from public.mentoring_evidence
+      where id = v_first_id
+        and status = 'ready'
+        and ready_at is not null
+    ),
+    'finalisasi bukti harus mengubah reservation menjadi ready'
+  );
+
+  v_duplicate := public.reserve_mentoring_evidence(
+    v_session_id,
+    '10000000-0000-0000-0000-000000000002',
+    repeat('a', 64),
+    1024,
+    800,
+    600
+  );
+
+  perform pg_temp.assert_true(
+    (v_duplicate ->> 'was_existing')::boolean
+    and (v_duplicate -> 'evidence' ->> 'id')::uuid = v_first_id
+    and (select count(*) from public.mentoring_evidence where session_id = v_session_id) = 1,
+    'checksum yang sama harus idempotent dan tidak membuat row baru'
+  );
+
+  v_second := public.reserve_mentoring_evidence(
+    v_session_id,
+    '10000000-0000-0000-0000-000000000002',
+    repeat('b', 64),
+    2048,
+    640,
+    480
+  );
+  v_third := public.reserve_mentoring_evidence(
+    v_session_id,
+    '10000000-0000-0000-0000-000000000002',
+    repeat('c', 64),
+    3072,
+    640,
+    480
+  );
+
+  perform pg_temp.assert_true(
+    (v_second -> 'evidence' ->> 'sort_order')::integer = 1
+    and (v_third -> 'evidence' ->> 'sort_order')::integer = 2
+    and (select count(*) from public.mentoring_evidence where session_id = v_session_id) = 3,
+    'reservasi bukti harus mengisi slot 0 sampai 2 secara berurutan'
+  );
+end;
+$security_mentoring_evidence$;
+
+select pg_temp.expect_error(
+  $$select public.reserve_mentoring_evidence(
+      (select id from public.mentoring_session where note_outlet = 'Security Atomic Mentoring'),
+      '10000000-0000-0000-0000-000000000002',
+      repeat('d', 64),
+      4096,
+      640,
+      480
+    )$$,
+  'sesi tidak boleh memiliki lebih dari tiga bukti foto',
+  'Maksimal tiga bukti foto'
+);
+
 select pg_temp.expect_error(
   $$select public.create_mentoring_session_atomic('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', current_date, 'Security Duplicate Notes', '[{"cashierId":"40000000-0000-0000-0000-000000000001","note":"Satu"},{"cashierId":"40000000-0000-0000-0000-000000000001","note":"Dua"}]'::jsonb)$$,
   'duplicate cashier note harus ditolak sebelum session dibuat',

@@ -12,7 +12,7 @@ hanya berdasarkan review kode.
 
 | Field                         | Nilai                                             |
 | ----------------------------- | ------------------------------------------------- |
-| Status                        | `IN_PROGRESS`                                     |
+| Status                        | `IMPLEMENTED_PENDING_VALIDATION`                  |
 | Baseline commit               | `947754a`                                         |
 | Dibuat                        | 2026-08-11 WIB                                    |
 | Milestone aktif               | SR-6                                              |
@@ -164,15 +164,15 @@ handling yang tidak terstandardisasi atau request tanpa cancellation.
 
 ## 7. Urutan Milestone
 
-| ID   | Tujuan                                       | Status        | Dependensi       |
-| ---- | -------------------------------------------- | ------------- | ---------------- |
-| SR-0 | Baseline render, network, dan query          | `COMPLETE`    | -                |
-| SR-1 | Infrastruktur controller search/list bersama | `COMPLETE`    | SR-0             |
-| SR-2 | Menyamakan dan mengamankan kontrak API list  | `COMPLETE`    | SR-0             |
-| SR-3 | Migrasi daftar Kasir dan Cabang              | `COMPLETE`    | SR-1, SR-2       |
-| SR-4 | Migrasi list pada detail Cabang dan Outlet   | `COMPLETE`    | SR-1, SR-2       |
-| SR-5 | Isolasi pencarian Pengguna dan data tab      | `COMPLETE`    | SR-1, SR-2       |
-| SR-6 | Regression, profiling, dan rollout           | `IN_PROGRESS` | SR-3 sampai SR-5 |
+| ID   | Tujuan                                       | Status                           | Dependensi       |
+| ---- | -------------------------------------------- | -------------------------------- | ---------------- |
+| SR-0 | Baseline render, network, dan query          | `COMPLETE`                       | -                |
+| SR-1 | Infrastruktur controller search/list bersama | `COMPLETE`                       | SR-0             |
+| SR-2 | Menyamakan dan mengamankan kontrak API list  | `COMPLETE`                       | SR-0             |
+| SR-3 | Migrasi daftar Kasir dan Cabang              | `COMPLETE`                       | SR-1, SR-2       |
+| SR-4 | Migrasi list pada detail Cabang dan Outlet   | `COMPLETE`                       | SR-1, SR-2       |
+| SR-5 | Isolasi pencarian Pengguna dan data tab      | `COMPLETE`                       | SR-1, SR-2       |
+| SR-6 | Regression, profiling, dan rollout           | `IMPLEMENTED_PENDING_VALIDATION` | SR-3 sampai SR-5 |
 
 ## 8. SR-0: Baseline Render Dan Network
 
@@ -412,15 +412,15 @@ menggabungkan semua route dalam satu deploy tanpa bukti milestone sebelumnya.
 
 ## 17. Bukti Milestone
 
-| Milestone | Commit  | File                                                                  | Test/Metrik                                                               | Status        | Catatan                                                                                                                                            |
-| --------- | ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SR-0      | -       | Audit source + Next docs                                              | Static audit                                                              | `COMPLETE`    | Native GET forms and page-level fetching confirmed; browser profiler unavailable without authenticated fixture                                     |
-| SR-1      | 591430b | `use-url-list`, SearchField, ClientPagination, five client list views | lint, typecheck, 35 unit tests                                            | `COMPLETE`    | URL history, abort/stale guard, pending/error/retry, and server initial data implemented; authenticated browser profiler unavailable               |
-| SR-2      | 591430b | `list-queries.ts`, list route handlers, `/api/users`                  | lint, typecheck, build, API smoke (9 protected routes)                    | `COMPLETE`    | Specific selects, pagination metadata, status scope, avatar proxy, and admin-only users endpoint implemented; DB security suite is final SR-6 gate |
-| SR-3      | 591430b | `CashierListClient`, `BranchListClient`, page shells                  | lint, typecheck, build, public E2E                                        | `COMPLETE`    | Native GET forms removed; status/search/pagination stay inside client list area                                                                    |
-| SR-4      | 591430b | detail list client components and page shells                         | lint, typecheck, build                                                    | `COMPLETE`    | Parent identity, edit forms, and create forms stay outside child list refetch                                                                      |
-| SR-5      | 591430b | `UserListClient`, `InviteTabClient`, `UserManagementList` sync        | lint, typecheck, build                                                    | `COMPLETE`    | Users search uses one users request; branch/invite fetch is lazy on Undang tab; role permission remains mount-lazy                                 |
-| SR-6      | -       | `search-rendering.spec.ts`, smoke/docs                                | unit 35 pass, lint pass, build pass, API smoke 9 pass, E2E 2 pass/10 skip | `IN_PROGRESS` | Authenticated search E2E and React Profiler/network p75 require credentials; security regression blocked because local PostgreSQL exits 137        |
+| Milestone | Commit  | File                                                                  | Test/Metrik                                                                                                                                      | Status                           | Catatan                                                                                                                                            |
+| --------- | ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SR-0      | -       | Audit source + Next docs                                              | Static audit                                                                                                                                     | `COMPLETE`                       | Native GET forms and page-level fetching confirmed; browser profiler unavailable without authenticated fixture                                     |
+| SR-1      | 591430b | `use-url-list`, SearchField, ClientPagination, five client list views | lint, typecheck, 35 unit tests                                                                                                                   | `COMPLETE`                       | URL history, abort/stale guard, pending/error/retry, and server initial data implemented; authenticated browser profiler unavailable               |
+| SR-2      | 591430b | `list-queries.ts`, list route handlers, `/api/users`                  | lint, typecheck, build, API smoke (9 protected routes)                                                                                           | `COMPLETE`                       | Specific selects, pagination metadata, status scope, avatar proxy, and admin-only users endpoint implemented; DB security suite is final SR-6 gate |
+| SR-3      | 591430b | `CashierListClient`, `BranchListClient`, page shells                  | lint, typecheck, build, public E2E                                                                                                               | `COMPLETE`                       | Native GET forms removed; status/search/pagination stay inside client list area                                                                    |
+| SR-4      | 591430b | detail list client components and page shells                         | lint, typecheck, build                                                                                                                           | `COMPLETE`                       | Parent identity, edit forms, and create forms stay outside child list refetch                                                                      |
+| SR-5      | 591430b | `UserListClient`, `InviteTabClient`, `UserManagementList` sync        | lint, typecheck, build                                                                                                                           | `COMPLETE`                       | Users search uses one users request; branch/invite fetch is lazy on Undang tab; role permission remains mount-lazy                                 |
+| SR-6      | -       | `search-rendering.spec.ts`, smoke/docs                                | authenticated search desktop+mobile 2/2 pass; full E2E 17 pass/3 skip/0 fail; security, lint, typecheck, 43 unit test, API smoke, dan build pass | `IMPLEMENTED_PENDING_VALIDATION` | Tidak ada document navigation saat Enter; React Profiler/network p75 dan staging masih pending                                                     |
 
 ## 18. Catatan Handoff Aktif
 
@@ -434,9 +434,9 @@ menggabungkan semua route dalam satu deploy tanpa bukti milestone sebelumnya.
 - Jangan mengubah `supabase/config.toml`; file tersebut merupakan perubahan lokal di luar scope.
 - Migration production terbaru adalah `0056`; roadmap ini tidak membutuhkan migration kecuali
   query plan membuktikan kebutuhan index.
-- Current implementation status: search/list code is complete, but production sign-off is held until
-  authenticated E2E, React Profiler/network metrics, and `npm.cmd run test:security` run in a prepared
-  environment. Do not call this production-ready from code checks alone.
+- Current implementation status: search/list code, authenticated desktop/mobile E2E, dan security
+  regression sudah lulus. Production sign-off tetap menunggu React Profiler/network p75 dan smoke
+  staging; jangan menyatakan production-ready hanya dari gate lokal.
 
 ## 19. Log Perubahan Dokumen
 
@@ -446,3 +446,4 @@ menggabungkan semua route dalam satu deploy tanpa bukti milestone sebelumnya.
 | 2026-08-11 WIB | Codex | SR-1 sampai SR-5 diimplementasikan: controller URL/abort, client list Kasir/Cabang/detail, API query helper dan `/api/users`, serta lazy tab Undang. Lint, typecheck, unit test, build, API smoke, dan public E2E dijalankan; security DB dan authenticated profiling menunggu environment. |
 | 2026-08-11 WIB | Codex | Final gate diulang: typecheck, lint, 35 unit test, build, API smoke 9/9, dan E2E 2 pass/10 skip. `test:security` dicoba dengan Docker dan mode PostgreSQL-only, tetapi container lokal restart/exit 137; stack dihentikan tanpa reset atau perubahan production.                            |
 | 2026-08-11 WIB | Codex | Commit `591430b` dibuat lokal. Push/deploy ditahan sampai SR-6 memiliki security regression dan authenticated E2E/profiling.                                                                                                                                                                |
+| 2026-08-11 WIB | Codex | Locator search dibatasi ke role textbox; authenticated desktop/mobile dan full E2E lulus, security regression kembali lulus; profiling p75/staging tetap pending.                                                                                                                           |

@@ -53,15 +53,16 @@ test.describe('assessment configuration archive', () => {
       .getByLabel('Alasan perubahan')
       .fill('Detail diganti untuk periode berikutnya');
     await detailDialog.getByRole('button', { name: 'Arsipkan' }).click();
+
+    await page.getByRole('link', { name: /Detail Arsip/ }).click();
     await expect(page.getByRole('button', { name: /Pulihkan detail/ }).first()).toBeVisible();
 
-    await page
-      .getByRole('button', { name: /Pulihkan detail/ })
-      .first()
-      .click();
+    await page.getByRole('button', { name: /Pulihkan detail/ }).first().click();
     const restoreDetailDialog = page.getByRole('dialog');
     await restoreDetailDialog.getByLabel('Alasan perubahan').fill('Detail digunakan kembali');
     await restoreDetailDialog.getByRole('button', { name: 'Pulihkan' }).click();
+
+    await page.getByRole('link', { name: /Detail Aktif/ }).click();
     await expect(page.getByRole('button', { name: /Arsipkan detail/ }).first()).toBeVisible();
   });
 });

@@ -1,4 +1,4 @@
-﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   graphql_public: {
@@ -901,6 +901,69 @@ export type Database = {
           },
         ];
       };
+      mentoring_evidence: {
+        Row: {
+          byte_size: number;
+          content_sha256: string;
+          created_at: string;
+          created_by: string;
+          height: number;
+          id: string;
+          mime_type: string;
+          object_path: string;
+          ready_at: string | null;
+          session_id: string;
+          sort_order: number;
+          status: string;
+          width: number;
+        };
+        Insert: {
+          byte_size: number;
+          content_sha256: string;
+          created_at?: string;
+          created_by: string;
+          height: number;
+          id?: string;
+          mime_type?: string;
+          object_path: string;
+          ready_at?: string | null;
+          session_id: string;
+          sort_order: number;
+          status?: string;
+          width: number;
+        };
+        Update: {
+          byte_size?: number;
+          content_sha256?: string;
+          created_at?: string;
+          created_by?: string;
+          height?: number;
+          id?: string;
+          mime_type?: string;
+          object_path?: string;
+          ready_at?: string | null;
+          session_id?: string;
+          sort_order?: number;
+          status?: string;
+          width?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'mentoring_evidence_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'mentoring_evidence_session_id_fkey';
+            columns: ['session_id'];
+            isOneToOne: false;
+            referencedRelation: 'mentoring_session';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       mentoring_session: {
         Row: {
           conducted_by: string;
@@ -1205,6 +1268,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      abort_mentoring_evidence: {
+        Args: { p_evidence_id: string };
+        Returns: boolean;
+      };
       add_cashier_to_period_roster: {
         Args: {
           p_cashier_id: string;
@@ -1465,6 +1532,37 @@ export type Database = {
         Args: never;
         Returns: Database['public']['Enums']['user_role'];
       };
+      finalize_mentoring_evidence: {
+        Args: {
+          p_actor_id: string;
+          p_byte_size: number;
+          p_content_sha256: string;
+          p_evidence_id: string;
+          p_height: number;
+          p_width: number;
+        };
+        Returns: {
+          byte_size: number;
+          content_sha256: string;
+          created_at: string;
+          created_by: string;
+          height: number;
+          id: string;
+          mime_type: string;
+          object_path: string;
+          ready_at: string | null;
+          session_id: string;
+          sort_order: number;
+          status: string;
+          width: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'mentoring_evidence';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       finalize_setup: {
         Args: {
           p_claim_id: string;
@@ -1492,16 +1590,13 @@ export type Database = {
         Args: { cid: string; pid: string };
         Returns: number;
       };
+      get_dashboard_snapshot: { Args: never; Returns: Json };
       get_detail_config: {
         Args: { did: string; pid: string };
         Returns: {
           deduction_points: number;
           scale_max: number;
         }[];
-      };
-      get_dashboard_snapshot: {
-        Args: never;
-        Returns: Json;
       };
       get_period_close_preflight: {
         Args: { p_period_id: string };
@@ -1579,6 +1674,17 @@ export type Database = {
         };
       };
       release_setup: { Args: { p_claim_id: string }; Returns: boolean };
+      reserve_mentoring_evidence: {
+        Args: {
+          p_actor_id: string;
+          p_byte_size: number;
+          p_content_sha256: string;
+          p_height: number;
+          p_session_id: string;
+          p_width: number;
+        };
+        Returns: Json;
+      };
       reserve_setup: { Args: { p_claim_id: string }; Returns: boolean };
       revoke_invite: {
         Args: { p_actor_id: string; p_invite_id: string };
@@ -1864,7 +1970,7 @@ export const Constants = {
 } as const;
 
 // Compatibility aliases for domain code. The Database contract above is generated from the
-// current local schema; these aliases keep existing imports tied to the same generated rows/enums.
+// current local schema; these aliases keep existing imports tied to generated rows and enums.
 export type UserRole = Enums<'user_role'>;
 export type DetailType = Enums<'detail_type'>;
 export type PeriodStatus = Enums<'period_status'>;
@@ -1892,6 +1998,7 @@ export type LeaderboardEntry = Tables<'leaderboard_entry'>;
 export type CashierCumulativeScore = Tables<'cashier_cumulative_score'>;
 export type MentoringSession = Tables<'mentoring_session'>;
 export type MentoringCashierNote = Tables<'mentoring_cashier_note'>;
+export type MentoringEvidence = Tables<'mentoring_evidence'>;
 export type Invite = Tables<'invite'>;
 export type AppNotification = Tables<'notification'>;
 export type PeriodLog = Tables<'period_log'>;

@@ -11,11 +11,11 @@ milestone lulus. Jangan menandai milestone selesai hanya berdasarkan review kode
 
 | Field                         | Nilai                                                               |
 | ----------------------------- | ------------------------------------------------------------------- |
-| Status                        | `IN_PROGRESS`                                                       |
+| Status                        | `IMPLEMENTED_PENDING_EXTERNAL_VALIDATION`                           |
 | Baseline commit               | `af8d198`                                                           |
 | Dibuat                        | 2026-08-10 WIB                                                      |
 | Diperbarui                    | 2026-08-11 WIB                                                      |
-| Milestone aktif               | AC-5                                                                |
+| Milestone aktif               | AC-6                                                                |
 | Framework                     | Next.js App Router 16.3.0, React 19, Tailwind CSS                   |
 | Backend                       | Supabase Auth, PostgreSQL, RLS, RPC service-role                    |
 | Ruang lingkup                 | Kategori penilaian, detail penilaian, snapshot periode, audit trail |
@@ -101,15 +101,15 @@ Setelah menyelesaikan satu milestone:
 
 ## 6. Urutan Milestone
 
-| ID   | Tujuan                                         | Status        | Dependensi       |
-| ---- | ---------------------------------------------- | ------------- | ---------------- |
-| AC-0 | Baseline data dan kontrak keselamatan          | `COMPLETE`    | -                |
-| AC-1 | Proteksi database, RPC status, dan audit trail | `COMPLETE`    | AC-0             |
-| AC-2 | Endpoint status kategori dan detail            | `COMPLETE`    | AC-1             |
-| AC-3 | UI daftar aktif/arsip dan status kategori      | `COMPLETE`    | AC-2             |
-| AC-4 | UI arsip/pulihkan detail                       | `COMPLETE`    | AC-2, AC-3       |
-| AC-5 | Regression historis dan periode berjalan       | `IN_PROGRESS` | AC-1 sampai AC-4 |
-| AC-6 | Staging, rollout production, dan observasi     | `NOT_STARTED` | AC-5             |
+| ID   | Tujuan                                         | Status                        | Dependensi       |
+| ---- | ---------------------------------------------- | ----------------------------- | ---------------- |
+| AC-0 | Baseline data dan kontrak keselamatan          | `COMPLETE`                    | -                |
+| AC-1 | Proteksi database, RPC status, dan audit trail | `COMPLETE`                    | AC-0             |
+| AC-2 | Endpoint status kategori dan detail            | `COMPLETE`                    | AC-1             |
+| AC-3 | UI daftar aktif/arsip dan status kategori      | `COMPLETE`                    | AC-2             |
+| AC-4 | UI arsip/pulihkan detail                       | `COMPLETE`                    | AC-2, AC-3       |
+| AC-5 | Regression historis dan periode berjalan       | `COMPLETE`                    | AC-1 sampai AC-4 |
+| AC-6 | Staging, rollout production, dan observasi     | `BLOCKED_EXTERNAL_VALIDATION` | AC-5             |
 
 ## 7. AC-0: Baseline Data Dan Kontrak Keselamatan
 
@@ -405,15 +405,15 @@ terpisah dengan keputusan bisnis eksplisit, bukan bagian fitur arsip ini.
 
 ## 16. Bukti Milestone
 
-| Milestone | Commit | Migrasi/Files                                 | Test                                                   | Status        | Catatan                                                         |
-| --------- | ------ | --------------------------------------------- | ------------------------------------------------------ | ------------- | --------------------------------------------------------------- |
-| AC-0      | -      | Baseline contract + regression fixture        | SQL regression                                         | `COMPLETE`    | Baseline production aktual tetap wajib dibuat pada AC-6         |
-| AC-1      | -      | `0056_assessment_configuration_archive.sql`   | Supabase local migration + security regression         | `COMPLETE`    | FK restrict, RPC atomic, audit, dan hard-delete guard lulus     |
-| AC-2      | -      | API status routes + legacy DELETE refactor    | Typecheck, lint, API smoke 8 request                   | `COMPLETE`    | Auth, payload, dan parent mismatch tervalidasi                  |
-| AC-3      | -      | Categories list/detail + CategoryStatusButton | Build + lint/typecheck                                 | `COMPLETE`    | Tab aktif/arsip dan modal reason tersedia                       |
-| AC-4      | -      | DetailStatusButton + detail tabs              | Build + lint/typecheck                                 | `COMPLETE`    | Restore child pada parent archived ditolak oleh RPC             |
-| AC-5      | -      | Security regression + E2E archive spec        | Security pass; public E2E 2 pass, auth E2E belum penuh | `IN_PROGRESS` | Admin E2E perlu dijalankan sampai selesai dengan fixture stabil |
-| AC-6      | -      | -                                             | Belum dijalankan                                       | `NOT_STARTED` | Belum ada staging/production migration atau smoke test          |
+| Milestone | Commit | Migrasi/Files                                 | Test                                                                                         | Status        | Catatan                                                      |
+| --------- | ------ | --------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------ |
+| AC-0      | -      | Baseline contract + regression fixture        | SQL regression                                                                               | `COMPLETE`    | Baseline production aktual tetap wajib dibuat pada AC-6      |
+| AC-1      | -      | `0056_assessment_configuration_archive.sql`   | Supabase local migration + security regression                                               | `COMPLETE`    | FK restrict, RPC atomic, audit, dan hard-delete guard lulus  |
+| AC-2      | -      | API status routes + legacy DELETE refactor    | Typecheck, lint, API smoke 8 request                                                         | `COMPLETE`    | Auth, payload, dan parent mismatch tervalidasi               |
+| AC-3      | -      | Categories list/detail + CategoryStatusButton | Build + lint/typecheck                                                                       | `COMPLETE`    | Tab aktif/arsip dan modal reason tersedia                    |
+| AC-4      | -      | DetailStatusButton + detail tabs              | Build + lint/typecheck                                                                       | `COMPLETE`    | Restore child pada parent archived ditolak oleh RPC          |
+| AC-5      | -      | Security regression + E2E archive spec        | Security pass; archive/restore admin desktop+mobile 2/2 pass; full E2E 17 pass/3 skip/0 fail | `COMPLETE`    | Test mengikuti perpindahan detail antara tab Aktif dan Arsip |
+| AC-6      | -      | -                                             | Belum dijalankan                                                                             | `NOT_STARTED` | Belum ada staging/production migration atau smoke test       |
 
 ## 17. Hasil Eksekusi Lokal
 
@@ -435,17 +435,16 @@ Gate yang lulus:
 - Public E2E — 2 test lulus; 6 test authenticated dilewati pada run tanpa credential
 - `git diff --check`
 
-Test `e2e/assessment-configuration-archive.spec.ts` sudah ditambahkan untuk alur admin archive dan
-restore kategori/detail pada fixture lokal. Run authenticated terakhir terhenti saat sesi tool
-berpindah, sehingga belum boleh dianggap sebagai bukti AC-5 lulus.
+Test `e2e/assessment-configuration-archive.spec.ts` lulus untuk alur admin archive dan restore
+kategori/detail pada Chromium desktop dan mobile. Spesifikasi mengikuti perilaku UI aktual: detail
+yang diarsipkan berpindah ke tab Detail Arsip dan kembali ke Detail Aktif setelah dipulihkan.
 
 Blocker sebelum production:
 
 1. Buat baseline read-only production dan pastikan backup/PITR tersedia.
 2. Jalankan migration dan smoke test pada staging dengan nama constraint production yang sudah
    diverifikasi.
-3. Jalankan E2E authenticated sampai selesai dan verifikasi desktop/mobile.
-4. Commit/deploy aplikasi setelah migration staging lulus, lalu observasi audit/API/error rate.
+3. Commit/deploy aplikasi setelah migration staging lulus, lalu observasi audit/API/error rate.
 
 Tidak ada perubahan production yang dilakukan selama implementasi ini. `supabase/config.toml`
 tetap dibiarkan sebagai perubahan lokal yang sudah ada sebelumnya.
@@ -467,3 +466,4 @@ tetap dibiarkan sebagai perubahan lokal yang sudah ada sebelumnya.
 | -------------- | ----- | --------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-10 WIB | Codex | Membuat roadmap arsip kategori/detail berdasarkan audit schema, snapshot periode, API, UI, RLS, dan foreign key production. |
 | 2026-08-11 WIB | Codex | Menerapkan AC-1 sampai AC-4, menambah regression/API/E2E test, dan mencatat gate lokal serta blocker production.            |
+| 2026-08-11 WIB | Codex | Memperbaiki alur test tab arsip; authenticated E2E desktop/mobile dan full regression suite lulus tanpa failure.            |
