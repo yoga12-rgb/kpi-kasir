@@ -16,6 +16,9 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { requireUser } from '@/lib/auth/guards';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
 import { hasPermission } from '@/lib/auth/permissions';
+import { getDashboardSnapshot } from '@/lib/dashboard/snapshot';
+import { getUnreadNotificationCount } from '@/lib/notifications/unread';
+import { logServerPerformance, nowMs } from '@/lib/performance/server';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate, formatScore } from '@/lib/utils';
 
@@ -32,14 +35,6 @@ interface DashboardMetricProps {
   href?: string;
   icon: typeof Users;
   tone?: 'primary' | 'success' | 'warning' | 'danger';
-}
-
-function getDashboardNowIso() {
-  return new Date().toISOString();
-}
-
-function getThirtyDaysAgoIso() {
-  return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function DashboardMetric({
@@ -111,10 +106,6 @@ function ScoreList({ title, rows, emptyLabel }: { title: string; rows: ScoreRow[
   );
 }
 
-function getRelation<T>(value: T | T[] | null | undefined) {
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-}
-
 export default async function DashboardPage() {
   const profile = await requireUser();
   const supabase = await createClient();
@@ -125,156 +116,30 @@ export default async function DashboardPage() {
   const canMentoring = hasPermission(permissions, 'mentoring');
   const canCashiers = hasPermission(permissions, 'cashiers.view');
   const canNotifications = hasPermission(permissions, 'notifications');
-  const errors: string[] = [];
-
-  const currentPeriodResult = await supabase
-    .from('period')
-    .select('id, label, start_date, end_date, status')
-    .eq('status', 'open')
-    .order('start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (currentPeriodResult.error) errors.push('periode aktif');
-  const currentPeriod = currentPeriodResult.data;
-
-  let branchIds: string[] = [];
-  if (isAdmin) {
-    const branchResult = await supabase.from('branch').select('id').eq('is_active', true);
-    if (branchResult.error) errors.push('cabang');
-    branchIds = (branchResult.data ?? []).map((branch) => branch.id);
-  } else {
-    const branchResult = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    if (branchResult.error) errors.push('akses cabang');
-    branchIds = (branchResult.data ?? []).map((branch) => branch.branch_id);
-  }
-
-  const hasBranches = branchIds.length > 0;
-  const emptyCount = { count: 0, error: null };
-
-  const cashierCountResult =
-    (isAdmin || canCashiers) && hasBranches
-      ? await supabase
-          .from('cashier')
-          .select('id, outlet!inner(branch_id)', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .in('outlet.branch_id', branchIds)
-      : emptyCount;
-  if (cashierCountResult.error) errors.push('kasir aktif');
-
-  const completionCompleteResult =
-    currentPeriod && hasBranches && (isAdmin || canAssessment || canCashiers)
-      ? await supabase
-          .from('cashier_period_completion')
-          .select('id, cashier!inner(outlet!inner(branch_id))', { count: 'exact', head: true })
-          .eq('period_id', currentPeriod.id)
-          .eq('status', 'complete')
-          .in('cashier.outlet.branch_id', branchIds)
-      : emptyCount;
-  const completionIncompleteResult =
-    currentPeriod && hasBranches && (isAdmin || canAssessment || canCashiers)
-      ? await supabase
-          .from('cashier_period_completion')
-          .select('id, cashier!inner(outlet!inner(branch_id))', { count: 'exact', head: true })
-          .eq('period_id', currentPeriod.id)
-          .neq('status', 'complete')
-          .in('cashier.outlet.branch_id', branchIds)
-      : emptyCount;
-  if (completionCompleteResult.error || completionIncompleteResult.error) {
-    errors.push('kelengkapan penilaian');
-  }
-
-  const scoreQueryEnabled = currentPeriod && hasBranches && (isAdmin || canLeaderboard || canAssessment);
-  const createScoreQuery = () =>
-    supabase
-      .from('cashier_period_score')
-      .select('cashier_id, total_score, cashier!inner(id, name, outlet!inner(branch_id))')
-      .eq('period_id', currentPeriod?.id ?? '')
-      .in('cashier.outlet.branch_id', branchIds);
-  const lowScoreResult = scoreQueryEnabled
-    ? await supabase
-        .from('cashier_period_score')
-        .select('id, cashier!inner(outlet!inner(branch_id))', { count: 'exact', head: true })
-        .eq('period_id', currentPeriod?.id ?? '')
-        .lt('total_score', 70)
-        .in('cashier.outlet.branch_id', branchIds)
-    : emptyCount;
-  const topScoreResult = scoreQueryEnabled
-    ? await createScoreQuery().order('total_score', { ascending: false }).limit(3)
-    : { data: [], error: null };
-  const bottomScoreResult = scoreQueryEnabled
-    ? await createScoreQuery().order('total_score', { ascending: true }).limit(3)
-    : { data: [], error: null };
-  if (lowScoreResult.error || topScoreResult.error || bottomScoreResult.error) {
-    errors.push('skor periode');
-  }
-
-  const thirtyDaysAgo = getThirtyDaysAgoIso();
-  const mentoringResult =
-    (isAdmin || canMentoring) && hasBranches
-      ? await supabase
-          .from('mentoring_session')
-          .select('id, outlet!inner(branch_id)', { count: 'exact', head: true })
-          .gte('visited_date', thirtyDaysAgo)
-          .in('outlet.branch_id', branchIds)
-      : emptyCount;
-  if (mentoringResult.error) errors.push('pendampingan');
-
-  const unreadResult = isAdmin || canNotifications
-    ? await supabase
-        .from('notification')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-        .eq('is_read', false)
-    : emptyCount;
-  if (unreadResult.error) errors.push('notifikasi');
-
-  const invitePendingResult = isAdmin
-    ? await supabase
-        .from('invite')
-        .select('id', { count: 'exact', head: true })
-        .is('used_at', null)
-        .is('revoked_at', null)
-        .gt('expires_at', getDashboardNowIso())
-    : emptyCount;
-  const inviteExpiredResult = isAdmin
-    ? await supabase
-        .from('invite')
-        .select('id', { count: 'exact', head: true })
-        .is('used_at', null)
-        .is('revoked_at', null)
-        .lt('expires_at', getDashboardNowIso())
-    : emptyCount;
-  if (invitePendingResult.error || inviteExpiredResult.error) errors.push('undangan');
-
-  const configWeightResult = currentPeriod && isAdmin
-    ? await supabase
-        .from('category_weight_history')
-        .select('weight')
-        .eq('period_id', currentPeriod.id)
-    : { data: [], error: null };
-  const configDetailResult = currentPeriod && isAdmin
-    ? await supabase
-        .from('detail_config_history')
-        .select('detail_id', { count: 'exact', head: true })
-        .eq('period_id', currentPeriod.id)
-    : { count: 0, error: null };
-  if (configWeightResult.error || configDetailResult.error) errors.push('konfigurasi periode');
-
-  const completeCount = currentPeriod ? completionCompleteResult.count : null;
-  const incompleteCount = currentPeriod ? completionIncompleteResult.count : null;
-  const configWeight = (configWeightResult.data ?? []).reduce(
-    (total, row) => total + Number(row.weight),
-    0
-  );
+  const dataStartedAt = nowMs();
+  const [dashboardResult, unreadCount] = await Promise.all([
+    getDashboardSnapshot(supabase, profile, permissions),
+    canNotifications ? getUnreadNotificationCount(profile.id) : Promise.resolve(null),
+  ]);
+  logServerPerformance('dashboard-data', {
+    durationMs: Number((nowMs() - dataStartedAt).toFixed(1)),
+    source: dashboardResult.source,
+    partialErrorCount: dashboardResult.errors.length,
+  });
+  const { snapshot, errors } = dashboardResult;
+  const currentPeriod = snapshot.period;
+  const cashierCount = snapshot.cashierCount;
+  const completeCount = snapshot.completeCount;
+  const incompleteCount = snapshot.incompleteCount;
+  const lowScoreCount = snapshot.lowScoreCount;
+  const mentoringCount = snapshot.mentoringCount;
+  const invitePendingCount = snapshot.invitePendingCount;
+  const inviteExpiredCount = snapshot.inviteExpiredCount;
+  const configWeight = snapshot.configWeight;
+  const configDetailCount = snapshot.configDetailCount;
   const configValid =
-    isAdmin && currentPeriod
-      ? !configWeightResult.error &&
-        !configDetailResult.error &&
-        Math.abs(configWeight - 100) <= 0.001 &&
-        (configDetailResult.count ?? 0) > 0
+    isAdmin && currentPeriod && !errors.includes('konfigurasi periode')
+      ? Math.abs(configWeight - 100) <= 0.001 && configDetailCount > 0
       : null;
   const closeReady =
     isAdmin && currentPeriod && completeCount !== null && incompleteCount !== null && configValid !== false
@@ -283,24 +148,8 @@ export default async function DashboardPage() {
         : incompleteCount === 0
       : null;
 
-  function toScoreRows(rows: unknown): ScoreRow[] {
-    if (!Array.isArray(rows)) return [];
-    return rows.flatMap((row) => {
-      if (!row || typeof row !== 'object') return [];
-      const item = row as {
-        cashier_id?: string;
-        total_score?: number;
-        cashier?: unknown;
-      };
-      const cashier = getRelation(item.cashier as { id?: string; name?: string } | { id?: string; name?: string }[]);
-      if (!item.cashier_id || !cashier?.name) return [];
-      return [{ id: item.cashier_id, name: cashier.name, score: Number(item.total_score ?? 0) }];
-    });
-  }
-
-  const topScores = toScoreRows(topScoreResult.data);
-  const bottomScores = toScoreRows(bottomScoreResult.data);
-  const lowScoreCount = lowScoreResult.error ? null : lowScoreResult.count ?? 0;
+  const topScores: ScoreRow[] = snapshot.topScores;
+  const bottomScores: ScoreRow[] = snapshot.bottomScores;
   const displayName = profile.full_name.split(' ')[0];
   const roleLabel = isAdmin ? 'Administrator' : profile.role === 'manager' ? 'Manager' : 'Supervisor';
   const dashboardHref = canCashiers ? '/cashiers' : canAssessment ? '/assessment' : '/dashboard';
@@ -310,7 +159,7 @@ export default async function DashboardPage() {
       <h1 className="text-xl font-bold text-surface-900">Halo, {displayName}</h1>
       <p className="mt-0.5 text-sm text-surface-500">
         {roleLabel}
-        {currentPeriod ? ` - Periode ${formatDate(currentPeriod.start_date)}` : ''}
+        {currentPeriod ? ` - Periode ${formatDate(currentPeriod.startDate)}` : ''}
       </p>
 
       {errors.length > 0 && (
@@ -350,15 +199,15 @@ export default async function DashboardPage() {
             />
             <DashboardMetric
               title="Kasir aktif"
-              value={cashierCountResult.count ?? null}
+              value={cashierCount}
               description="Dalam cabang aktif"
               href="/cashiers"
               icon={Users}
             />
             <DashboardMetric
               title="Undangan aktif"
-              value={invitePendingResult.count ?? null}
-              description={inviteExpiredResult.count !== null ? `${inviteExpiredResult.count} sudah kedaluwarsa` : 'Status belum tersedia'}
+              value={invitePendingCount}
+              description={inviteExpiredCount !== null ? `${inviteExpiredCount} sudah kedaluwarsa` : 'Status belum tersedia'}
               href="/settings/users"
               icon={Clock3}
               tone="warning"
@@ -375,7 +224,7 @@ export default async function DashboardPage() {
             />
             <DashboardMetric
               title="Notifikasi belum dibaca"
-              value={canNotifications ? unreadResult.count ?? null : null}
+              value={canNotifications ? unreadCount : null}
               description="Alert dan aktivitas akun"
               href="/notifications"
               icon={Bell}
@@ -404,14 +253,14 @@ export default async function DashboardPage() {
             />
             <DashboardMetric
               title="Pendampingan 30 hari"
-              value={canMentoring ? mentoringResult.count ?? null : null}
+              value={canMentoring ? mentoringCount : null}
               description="Sesi pada cabang Anda"
               href="/mentoring"
               icon={ClipboardCheck}
             />
             <DashboardMetric
               title="Notifikasi belum dibaca"
-              value={canNotifications ? unreadResult.count ?? null : null}
+              value={canNotifications ? unreadCount : null}
               description="Tindakan dan alert"
               href="/notifications"
               icon={Bell}
@@ -434,14 +283,14 @@ export default async function DashboardPage() {
           />
           <DashboardMetric
             title="Pendampingan 30 hari"
-            value={canMentoring ? mentoringResult.count ?? null : null}
+            value={canMentoring ? mentoringCount : null}
             description="Sesi terbaru di cabang"
             href="/mentoring"
             icon={ClipboardCheck}
           />
           <DashboardMetric
             title="Notifikasi belum dibaca"
-            value={canNotifications ? unreadResult.count ?? null : null}
+            value={canNotifications ? unreadCount : null}
             description="Tindakan hari ini"
             href="/notifications"
             icon={Bell}
@@ -451,7 +300,7 @@ export default async function DashboardPage() {
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>{currentPeriod ? `Periode ${formatDate(currentPeriod.start_date)}` : 'Aksi cepat'}</CardTitle>
+          <CardTitle>{currentPeriod ? `Periode ${formatDate(currentPeriod.startDate)}` : 'Aksi cepat'}</CardTitle>
           {currentPeriod && <Badge variant={closeReady ? 'success' : 'warning'}>{closeReady ? 'Siap' : 'Aktif'}</Badge>}
         </CardHeader>
         <div className="space-y-2 text-sm">

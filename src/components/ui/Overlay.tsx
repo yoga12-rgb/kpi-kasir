@@ -1,6 +1,6 @@
 import { CheckCircle2, CircleAlert, Info, X, type LucideIcon } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/cn';
 
 /* ---------- Bottom Sheet ---------- */
 export interface BottomSheetProps {

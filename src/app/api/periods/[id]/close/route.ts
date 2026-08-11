@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/auth/guards';
+import { revalidatePeriodOptions } from '@/lib/cache/reference';
 import { createAdminClient } from '@/lib/supabase/server';
 import { withApiRoute } from '@/lib/api/route';
 
@@ -28,6 +29,7 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    revalidatePeriodOptions();
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json(

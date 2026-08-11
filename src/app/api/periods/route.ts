@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/guards';
+import { revalidatePeriodOptions } from '@/lib/cache/reference';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { withApiRoute } from '@/lib/api/route';
 
@@ -31,6 +32,7 @@ async function handlePOST(request: Request) {
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    revalidatePeriodOptions();
     return NextResponse.json({ period: data }, { status: 201 });
   } catch (err) {
     return NextResponse.json(

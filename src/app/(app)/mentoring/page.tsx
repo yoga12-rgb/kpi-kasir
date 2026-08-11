@@ -8,45 +8,59 @@ export default async function MentoringPage() {
   const profile = await requirePermission('mentoring');
   const supabase = await createClient();
 
-  let branchIds: string[] = [];
-  let branches: { id: string; name: string }[] = [];
-
   if (profile.role === 'admin') {
-    const { data } = await supabase
-      .from('branch')
-      .select('id, name')
-      .eq('is_active', true)
-      .order('name');
-    branches = data ?? [];
-    branchIds = branches.map((branch) => branch.id);
-  } else {
-    const { data: userBranches } = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    branchIds = (userBranches ?? []).map((branch) => branch.branch_id);
-
-    if (branchIds.length > 0) {
-      const { data } = await supabase
-        .from('branch')
-        .select('id, name')
+    const [branchesResult, outletsResult] = await Promise.all([
+      supabase.from('branch').select('id, name').eq('is_active', true).order('name'),
+      supabase
+        .from('outlet')
+        .select('id, name, branch_id, branch!inner(is_active)')
         .eq('is_active', true)
-        .in('id', branchIds)
-        .order('name');
-      branches = data ?? [];
-    }
+        .eq('branch.is_active', true)
+        .order('name'),
+    ]);
+
+    return (
+      <MentoringPageContent
+        branches={branchesResult.data ?? []}
+        outlets={outletsResult.data ?? []}
+      />
+    );
   }
 
-  const { data: outlets } =
+  const { data: userBranches } = await supabase
+    .from('user_branch')
+    .select('branch_id')
+    .eq('user_id', profile.id);
+  const branchIds = (userBranches ?? []).map((branch) => branch.branch_id);
+  const [branchesResult, outletsResult] = await Promise.all([
     branchIds.length > 0
-      ? await supabase
+      ? supabase
+          .from('branch')
+          .select('id, name')
+          .eq('is_active', true)
+          .in('id', branchIds)
+          .order('name')
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    branchIds.length > 0
+      ? supabase
           .from('outlet')
           .select('id, name, branch_id')
           .eq('is_active', true)
           .in('branch_id', branchIds)
           .order('name')
-      : { data: [] };
+      : Promise.resolve({ data: [] as { id: string; name: string; branch_id: string }[] }),
+  ]);
 
+  return <MentoringPageContent branches={branchesResult.data ?? []} outlets={outletsResult.data ?? []} />;
+}
+
+function MentoringPageContent({
+  branches,
+  outlets,
+}: {
+  branches: { id: string; name: string }[];
+  outlets: { id: string; name: string; branch_id: string }[];
+}) {
   return (
     <div className="p-4">
         <div className="flex items-center justify-between">
@@ -63,7 +77,7 @@ export default async function MentoringPage() {
         <div className="mt-4">
           <MentoringList
             branches={branches}
-            outlets={(outlets ?? []).map((outlet) => ({
+            outlets={outlets.map((outlet) => ({
               id: outlet.id,
               name: outlet.name,
               branch_id: outlet.branch_id,

@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { requireAnyPermission } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { avatarPath } from '@/lib/storage/cashier-avatar';
+import { avatarPath, avatarThumbnailPath } from '@/lib/storage/cashier-avatar';
 import { MAX_AVATAR_SIZE, validateAvatarBuffer } from '@/lib/storage/avatar-validation';
 import { withApiRoute } from '@/lib/api/route';
 
 const BUCKET = 'cashier-photos';
 const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+const THUMBNAIL_SIZE = 160;
 
 async function getCashierBranch(
   adminSupabase: Awaited<ReturnType<typeof createAdminClient>>,
@@ -100,18 +102,46 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
     .from(BUCKET)
     .list(`cashier/${id}`, { limit: 50, search: 'avatar' });
   const oldPaths = (oldObjects ?? [])
-    .filter((object) => /^avatar(?:-[0-9a-f-]+)?\.(jpg|png|webp)$/i.test(object.name))
+    .filter((object) => /^avatar(?:-[0-9a-f-]+)?(?:-thumb)?\.(jpg|png|webp)$/i.test(object.name))
     .map((object) => `cashier/${id}/${object.name}`);
 
   const path = avatarPath(id, decoded.format, randomUUID());
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, decoded.buffer, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: decoded.format === 'jpg' ? 'image/jpeg' : `image/${decoded.format}`,
-  });
+  const thumbnailPath = avatarThumbnailPath(path);
+  if (!thumbnailPath) {
+    return NextResponse.json({ error: 'Path foto tidak valid' }, { status: 500 });
+  }
 
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 400 });
+  const thumbnailPipeline = sharp(decoded.buffer)
+    .rotate()
+    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: 'cover', position: 'attention' });
+  if (decoded.format === 'jpg') thumbnailPipeline.jpeg({ quality: 82, mozjpeg: true });
+  if (decoded.format === 'png') thumbnailPipeline.png({ compressionLevel: 9 });
+  if (decoded.format === 'webp') thumbnailPipeline.webp({ quality: 82 });
+  const thumbnailBuffer = await thumbnailPipeline.toBuffer();
+  const contentType = decoded.format === 'jpg' ? 'image/jpeg' : `image/${decoded.format}`;
+  const [photoUpload, thumbnailUpload] = await Promise.all([
+    supabase.storage.from(BUCKET).upload(path, decoded.buffer, {
+      cacheControl: '31536000',
+      upsert: false,
+      contentType,
+    }),
+    supabase.storage.from(BUCKET).upload(thumbnailPath, thumbnailBuffer, {
+      cacheControl: '31536000',
+      upsert: false,
+      contentType,
+    }),
+  ]);
+
+  if (photoUpload.error || thumbnailUpload.error) {
+    const uploadedPaths = [
+      ...(photoUpload.error ? [] : [path]),
+      ...(thumbnailUpload.error ? [] : [thumbnailPath]),
+    ];
+    if (uploadedPaths.length > 0) await adminSupabase.storage.from(BUCKET).remove(uploadedPaths);
+    return NextResponse.json(
+      { error: photoUpload.error?.message ?? thumbnailUpload.error?.message ?? 'Gagal mengunggah foto' },
+      { status: 400 }
+    );
   }
 
   const { error: updateError } = await adminSupabase
@@ -120,7 +150,7 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
     .eq('id', id);
 
   if (updateError) {
-    await adminSupabase.storage.from(BUCKET).remove([path]);
+    await adminSupabase.storage.from(BUCKET).remove([path, thumbnailPath]);
     return NextResponse.json({ error: updateError.message }, { status: 400 });
   }
 

@@ -2,7 +2,7 @@
 
 import Link, { useLinkStatus } from 'next/link';
 import type { ComponentProps } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/cn';
 
 type NavigationLinkProps = ComponentProps<typeof Link> & {
   pendingIndicator?: boolean;

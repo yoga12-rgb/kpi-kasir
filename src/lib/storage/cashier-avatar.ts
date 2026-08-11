@@ -1,11 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 
-function avatarProxyUrl(path: string): string {
-  return `/api/storage/cashier-avatar?path=${encodeURIComponent(path)}`;
+type AvatarVariant = 'original' | 'thumbnail';
+
+function avatarProxyUrl(path: string, variant: AvatarVariant = 'original'): string {
+  const params = new URLSearchParams({ path });
+  if (variant === 'thumbnail') params.set('variant', 'thumbnail');
+  return `/api/storage/cashier-avatar?${params.toString()}`;
 }
 
 export function avatarPath(cashierId: string, ext: string, version: string): string {
   return `cashier/${cashierId}/avatar-${version}.${ext}`;
+}
+
+export function avatarThumbnailPath(path: string): string | null {
+  const match = path.match(/^(cashier\/[0-9a-f-]+\/avatar-[0-9a-f-]+)\.(jpg|png|webp)$/i);
+  return match ? `${match[1]}-thumb.${match[2]}` : null;
 }
 
 /**
@@ -14,15 +23,16 @@ export function avatarPath(cashierId: string, ext: string, version: string): str
  */
 export async function getCashierAvatarUrl(
   _supabase: Awaited<ReturnType<typeof createClient>>,
-  avatarPathValue: string | null | undefined
+  avatarPathValue: string | null | undefined,
+  variant: AvatarVariant = 'original'
 ): Promise<string | null> {
   if (!avatarPathValue) return null;
-  return avatarProxyUrl(avatarPathValue);
+  return avatarProxyUrl(avatarPathValue, variant);
 }
 
 /**
- * Buat signed URLs untuk sekumpulan path avatar (dipakai pada daftar kasir,
- * assessment, mentoring) agar tidak N+1 request per kasir.
+ * List memakai thumbnail privat. Proxy akan fallback ke original untuk avatar
+ * lama yang belum memiliki thumbnail, sehingga migrasi tidak merusak foto lama.
  */
 export async function getCashierAvatarUrls(
   _supabase: Awaited<ReturnType<typeof createClient>>,
@@ -34,7 +44,7 @@ export async function getCashierAvatarUrls(
   if (uniquePaths.length === 0) return result;
 
   for (const path of uniquePaths) {
-    result.set(path, avatarProxyUrl(path));
+    result.set(path, avatarProxyUrl(path, 'thumbnail'));
   }
 
   return result;

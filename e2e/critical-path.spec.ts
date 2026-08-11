@@ -91,4 +91,31 @@ test.describe('authenticated critical paths', () => {
     await expect(page).not.toHaveURL(/\/login/);
     await expect(page.locator('body')).not.toContainText('Application error');
   });
+
+  test('cashier detail loads secondary tabs only when opened', async ({ page }) => {
+    const tabRequests: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (/\/api\/cashiers\/[^/]+\/tabs\?tab=/.test(url)) tabRequests.push(url);
+    });
+
+    await page.goto('/cashiers');
+    const cashierLink = page.locator('a[href^="/cashiers/"]').first();
+    if ((await cashierLink.count()) === 0) {
+      test.skip(true, 'Tidak ada kasir yang dapat diakses oleh user E2E.');
+      return;
+    }
+
+    await cashierLink.click();
+    await expect(page.getByRole('tab', { name: 'Penempatan' })).toBeVisible();
+    await expect.poll(() => tabRequests.some((url) => url.includes('tab=placement'))).toBe(true);
+    expect(tabRequests.some((url) => url.includes('tab=mutation'))).toBe(false);
+    expect(tabRequests.some((url) => url.includes('tab=mentoring'))).toBe(false);
+
+    const mentoringTab = page.getByRole('tab', { name: 'Pendampingan' });
+    if ((await mentoringTab.count()) > 0) {
+      await mentoringTab.click();
+      await expect.poll(() => tabRequests.some((url) => url.includes('tab=mentoring'))).toBe(true);
+    }
+  });
 });

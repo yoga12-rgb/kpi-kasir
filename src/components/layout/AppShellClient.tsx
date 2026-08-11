@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Home, ClipboardList, Trophy, Menu, Bell, LogOut } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { type ReactNode } from 'react';
+import { Home, ClipboardList, Trophy, Menu, LogOut } from 'lucide-react';
+import { signOutAction } from '@/app/(app)/actions';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { hasPermission, type Permission } from '@/lib/auth/permissions';
-import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/cn';
 
 const navItems = [
   { href: '/dashboard', label: 'Beranda', icon: Home },
@@ -24,52 +24,19 @@ const navItems = [
 export function AppShellClient({
   children,
   permissions,
+  notification,
 }: {
   children: ReactNode;
   permissions: Permission[];
+  notification?: ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const visibleNavItems = navItems.filter(
     (item) => !item.permission || hasPermission(permissions, item.permission)
   );
-  const canNotifications = hasPermission(permissions, 'notifications');
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (!canNotifications) return;
-    const controller = new AbortController();
-
-    fetch('/api/notifications?limit=1', { cache: 'no-store', signal: controller.signal })
-      .then((response) => response.json().catch(() => null))
-      .then((payload: { unreadCount?: unknown } | null) => {
-        if (typeof payload?.unreadCount === 'number') setUnreadCount(Math.max(0, payload.unreadCount));
-      })
-      .catch((error: unknown) => {
-        if (error instanceof Error && error.name === 'AbortError') return;
-      });
-
-    const handleUnreadCount = (event: Event) => {
-      const count = (event as CustomEvent<{ count?: unknown }>).detail?.count;
-      if (typeof count === 'number') setUnreadCount(Math.max(0, count));
-    };
-    window.addEventListener('notifications:unread-count', handleUnreadCount);
-
-    return () => {
-      controller.abort();
-      window.removeEventListener('notifications:unread-count', handleUnreadCount);
-    };
-  }, [canNotifications]);
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
-
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh();
-  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-app flex-col border-x border-surface-200 bg-surface-50 md:max-w-7xl md:flex-row">
@@ -111,30 +78,17 @@ export function AppShellClient({
           </Link>
           <span className="hidden text-sm font-medium text-surface-500 md:block">Area kerja</span>
           <nav aria-label="Aksi akun" className="ml-auto flex items-center gap-2">
-          {canNotifications && (
-            <Link
-              href="/notifications"
-              prefetch
-              className="relative flex h-9 w-9 items-center justify-center rounded-lg text-surface-600 hover:bg-surface-100"
-              aria-label="Notifikasi"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-danger-600 px-1 text-[10px] font-bold leading-none text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-danger-600 hover:bg-danger-500/10"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Keluar
-          </button>
-        </nav>
+            {notification}
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-danger-600 hover:bg-danger-500/10"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Keluar
+              </button>
+            </form>
+          </nav>
         </header>
 
         <main data-page-content className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">

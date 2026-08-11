@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withApiRoute } from '@/lib/api/route';
 import { getCronContext } from '@/lib/cron/auth';
+import { revalidatePeriodOptions } from '@/lib/cache/reference';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -46,6 +47,7 @@ async function handlePOST(request: Request) {
           { status: 409, headers: { 'x-invocation-id': invocationId } }
         );
       }
+      revalidatePeriodOptions();
     }
 
     const { data, error } = await supabase.rpc('open_period', {
@@ -53,6 +55,7 @@ async function handlePOST(request: Request) {
       p_end_date: endDate,
     });
     if (error) throw error;
+    revalidatePeriodOptions();
 
     console.info(`[cron:${invocationId}] periods completed`);
     return NextResponse.json(

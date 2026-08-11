@@ -1458,6 +1458,26 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
 select pg_temp.assert_true(
+  has_function_privilege('anon', 'public.get_dashboard_snapshot()', 'execute') = false
+  and has_function_privilege('authenticated', 'public.get_dashboard_snapshot()', 'execute') = true
+  and has_function_privilege('service_role', 'public.get_dashboard_snapshot()', 'execute') = true,
+  'dashboard snapshot hanya boleh dieksekusi authenticated atau service_role'
+);
+with dashboard as (
+  select public.get_dashboard_snapshot() as payload
+)
+select pg_temp.assert_true(
+  (
+    select not exists (
+      select 1
+      from jsonb_array_elements(payload -> 'topScores') as score
+      where score ->> 'id' = '40000000-0000-0000-0000-000000000002'
+    )
+    from dashboard
+  ),
+  'dashboard manager tidak boleh memuat skor cabang lain melalui security definer'
+);
+select pg_temp.assert_true(
   (select count(*) = 1
    from public.notification
    where dedupe_key = 'security:manager-a:cashier-a:period-open'),

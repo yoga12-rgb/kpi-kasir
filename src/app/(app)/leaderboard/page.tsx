@@ -1,5 +1,7 @@
 import { LeaderboardView } from '@/components/leaderboard/LeaderboardView';
 import { requirePermission } from '@/lib/auth/guards';
+import { getCachedPeriodOptions } from '@/lib/cache/reference';
+import { getInitialLeaderboardResult } from '@/lib/leaderboard/initial';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -7,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function LeaderboardPage() {
   const profile = await requirePermission('leaderboard');
   const supabase = await createClient();
+  const periodOptionsPromise = getCachedPeriodOptions();
 
   let branchIds: string[] = [];
   if (profile.role === 'admin') {
@@ -20,24 +23,28 @@ export default async function LeaderboardPage() {
     branchIds = (data ?? []).map((x) => x.branch_id);
   }
 
-  const { data: branches } = await supabase
-    .from('branch')
-    .select('id, name')
-    .in('id', branchIds)
-    .order('name');
-
-  const { data: outlets } = await supabase
-    .from('outlet')
-    .select('id, branch_id, name')
-    .eq('is_active', true)
-    .in('branch_id', branchIds)
-    .order('name');
-
-  const { data: periods } = await supabase
-    .from('period')
-    .select('id, label, status')
-    .order('start_date', { ascending: false })
-    .limit(24);
+  const periods = await periodOptionsPromise;
+  const visiblePeriods = (periods ?? []).map((period) => ({
+    id: period.id,
+    label: period.label,
+    status: period.status,
+  }));
+  const defaultPeriod = visiblePeriods.find((period) => period.status === 'open') ?? visiblePeriods[0];
+  const [branchesResult, outletsResult, initialResult] = await Promise.all([
+    supabase.from('branch').select('id, name').in('id', branchIds).order('name'),
+    supabase
+      .from('outlet')
+      .select('id, branch_id, name')
+      .eq('is_active', true)
+      .in('branch_id', branchIds)
+      .order('name'),
+    getInitialLeaderboardResult(supabase, {
+      branchIds,
+      period: defaultPeriod,
+    }),
+  ]);
+  const branches = branchesResult.data;
+  const outlets = outletsResult.data;
 
   return (
     <div className="p-4">
@@ -51,11 +58,8 @@ export default async function LeaderboardPage() {
               name: o.name,
               branch_id: o.branch_id,
             }))}
-            periods={(periods ?? []).map((period) => ({
-              id: period.id,
-              label: period.label,
-              status: period.status,
-            }))}
+            periods={visiblePeriods}
+            initialResult={initialResult ?? undefined}
           />
         </div>
     </div>

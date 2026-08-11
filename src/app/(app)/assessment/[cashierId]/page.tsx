@@ -17,11 +17,28 @@ export default async function CashierAssessmentPage({
   const { cashierId } = await params;
   const supabase = await createClient();
 
-  const { data: cashier } = await supabase
+  const cashierPromise = supabase
     .from('cashier')
-    .select('*, outlet!inner(branch_id, name, branch(id, name, code))')
+    .select('id, name, outlet!inner(branch_id, name, branch(id, name, code))')
     .eq('id', cashierId)
     .single();
+  const periodPromise = supabase
+    .from('period')
+    .select('id, label')
+    .eq('status', 'open')
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const branchAccessPromise =
+    profile.role === 'admin'
+      ? Promise.resolve({ data: [] as { branch_id: string }[] })
+      : supabase.from('user_branch').select('branch_id').eq('user_id', profile.id);
+  const [cashierResult, periodResult, branchAccessResult] = await Promise.all([
+    cashierPromise,
+    periodPromise,
+    branchAccessPromise,
+  ]);
+  const cashier = cashierResult.data;
 
   if (!cashier) notFound();
 
@@ -34,22 +51,11 @@ export default async function CashierAssessmentPage({
 
   // Cek akses non-admin
   if (profile.role !== 'admin') {
-    const { data: ub } = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    const allowed = (ub ?? []).map((x) => x.branch_id);
+    const allowed = (branchAccessResult.data ?? []).map((assignment) => assignment.branch_id);
     if (!allowed.includes(outlet.branch_id)) redirect('/dashboard');
   }
 
-  // Periode aktif
-  const { data: period } = await supabase
-    .from('period')
-    .select('*')
-    .eq('status', 'open')
-    .order('start_date', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const period = periodResult.data;
 
   if (!period) {
     return (
@@ -59,25 +65,42 @@ export default async function CashierAssessmentPage({
     );
   }
 
-  // Form periode harus membaca snapshot, bukan category/detail live.
-  const { data: categorySnapshots } = await supabase
-    .from('category_weight_history')
-    .select('category_id, category_name, weight')
-    .eq('period_id', period.id)
-    .order('category_name');
-
-  const { data: detailSnapshots } = await supabase
-    .from('detail_config_history')
-    .select('detail_id, category_id, detail_name, detail_type, scale_max, deduction_points')
-    .eq('period_id', period.id)
-    .order('detail_name');
-
-  // Assessment kasir periode ini
-  const { data: assessments } = await supabase
-    .from('assessment')
-    .select('id, detail_id, scale_value, normalized_score')
-    .eq('period_id', period.id)
-    .eq('cashier_id', cashierId);
+  // Semua query ini hanya bergantung pada periode dan kasir yang sudah tervalidasi.
+  const [categorySnapshotsResult, detailSnapshotsResult, assessmentsResult, periodScoreResult, completionResult] =
+    await Promise.all([
+      supabase
+        .from('category_weight_history')
+        .select('category_id, category_name, weight')
+        .eq('period_id', period.id)
+        .order('category_name'),
+      supabase
+        .from('detail_config_history')
+        .select('detail_id, category_id, detail_name, detail_type, scale_max, deduction_points')
+        .eq('period_id', period.id)
+        .order('detail_name'),
+      supabase
+        .from('assessment')
+        .select('id, detail_id, scale_value, normalized_score')
+        .eq('period_id', period.id)
+        .eq('cashier_id', cashierId),
+      supabase
+        .from('cashier_period_score')
+        .select('total_score, category_scores')
+        .eq('period_id', period.id)
+        .eq('cashier_id', cashierId)
+        .maybeSingle(),
+      supabase
+        .from('cashier_period_completion')
+        .select('status, assessed_details, total_details')
+        .eq('period_id', period.id)
+        .eq('cashier_id', cashierId)
+        .maybeSingle(),
+    ]);
+  const categorySnapshots = categorySnapshotsResult.data;
+  const detailSnapshots = detailSnapshotsResult.data;
+  const assessments = assessmentsResult.data;
+  const periodScore = periodScoreResult.data;
+  const completion = completionResult.data;
 
   const assessmentMap = new Map((assessments ?? []).map((a) => [a.detail_id, a]));
 
@@ -98,21 +121,6 @@ export default async function CashierAssessmentPage({
     list.push(e);
     eventMap.set(e.assessment_id, list);
   }
-
-  // Skor periode
-  const { data: periodScore } = await supabase
-    .from('cashier_period_score')
-    .select('total_score, category_scores')
-    .eq('period_id', period.id)
-    .eq('cashier_id', cashierId)
-    .maybeSingle();
-
-  const { data: completion } = await supabase
-    .from('cashier_period_completion')
-    .select('status, assessed_details, total_details')
-    .eq('period_id', period.id)
-    .eq('cashier_id', cashierId)
-    .maybeSingle();
 
   const detailsByCategory = new Map<string, NonNullable<typeof detailSnapshots>>();
   for (const detail of detailSnapshots ?? []) {

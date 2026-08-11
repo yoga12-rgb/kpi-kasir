@@ -1499,6 +1499,10 @@ export type Database = {
           scale_max: number;
         }[];
       };
+      get_dashboard_snapshot: {
+        Args: never;
+        Returns: Json;
+      };
       get_period_close_preflight: {
         Args: { p_period_id: string };
         Returns: Json;

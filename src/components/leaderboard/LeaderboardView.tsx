@@ -8,7 +8,8 @@ import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
-import { cn, formatScore } from '@/lib/utils';
+import { cn } from '@/lib/cn';
+import { formatScore } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
 
@@ -47,6 +48,10 @@ interface LeaderboardResponse {
   hasMore: boolean;
 }
 
+interface InitialLeaderboardResult extends LeaderboardResponse {
+  requestKey: string;
+}
+
 function getErrorMessage(payload: unknown) {
   if (!payload || typeof payload !== 'object' || !('error' in payload)) {
     return 'Gagal memuat leaderboard';
@@ -65,10 +70,12 @@ export function LeaderboardView({
   branches,
   outlets,
   periods,
+  initialResult,
 }: {
   branches: BranchOption[];
   outlets: OutletOption[];
   periods: PeriodOption[];
+  initialResult?: InitialLeaderboardResult;
 }) {
   const [level, setLevel] = useState<'global' | 'branch' | 'outlet'>('global');
   const [mode, setMode] = useState<'period' | 'cumulative'>('period');
@@ -79,15 +86,16 @@ export function LeaderboardView({
   );
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [rows, setRows] = useState<Row[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<Row[]>(() => initialResult?.rows ?? []);
+  const [nextCursor, setNextCursor] = useState<string | null>(() => initialResult?.nextCursor ?? null);
+  const [hasMore, setHasMore] = useState(() => initialResult?.hasMore ?? false);
+  const [loading, setLoading] = useState(() => !initialResult);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const loadMoreControllerRef = useRef<AbortController | null>(null);
+  const initialResultRef = useRef(initialResult);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -141,6 +149,12 @@ export function LeaderboardView({
     loadMoreControllerRef.current?.abort();
     loadMoreControllerRef.current = null;
 
+    const requestKey = buildParams('json').toString();
+    if (initialResultRef.current?.requestKey === requestKey) {
+      initialResultRef.current = undefined;
+      return;
+    }
+
     const controller = new AbortController();
     let active = true;
     setRows([]);
@@ -169,7 +183,7 @@ export function LeaderboardView({
       controller.abort();
       loadMoreControllerRef.current?.abort();
     };
-  }, [fetchPage, retryKey]);
+  }, [buildParams, fetchPage, retryKey]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || !hasMore || loading || loadingMore) return;

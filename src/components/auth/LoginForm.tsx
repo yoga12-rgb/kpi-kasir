@@ -31,7 +31,6 @@ function LoginFormInner() {
     }
 
     router.push('/dashboard');
-    router.refresh();
   }
 
   async function handleGoogleLogin() {

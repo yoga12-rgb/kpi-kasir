@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { getCurrentUser } from '@/lib/auth/session';
+import { nowMs } from '@/lib/performance/server';
 import { checkRateLimit, type RateLimitConfig } from '@/lib/security/rate-limit';
 
 type ApiHandler = (request: Request, context?: unknown) => Promise<Response>;
@@ -96,6 +97,18 @@ async function normalizeResponse(response: Response, id: string) {
   );
 }
 
+function withServerTiming(response: Response, startedAt: number) {
+  if (process.env.PERFORMANCE_DEBUG !== 'true') return response;
+
+  const headers = new Headers(response.headers);
+  headers.set('Server-Timing', `app;dur=${(nowMs() - startedAt).toFixed(1)}`);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 export function withApiRoute<TContext>(
   handler: (request: Request, context: TContext) => Promise<Response>,
   options?: { publicRoute?: boolean; rateLimit?: RateLimitConfig }
@@ -110,44 +123,57 @@ export function withApiRoute(
   options: { publicRoute?: boolean; rateLimit?: RateLimitConfig } = {}
 ): ApiHandler {
   return async (request, context) => {
+    const startedAt = nowMs();
     const id = requestId(request);
     try {
       let identity: string | undefined;
       if (!options.publicRoute) {
         const user = await getCurrentUser();
         if (!user?.profile?.is_active) {
-          return errorResponse(request, 'UNAUTHENTICATED', 'Autentikasi diperlukan', 401, id);
+          return withServerTiming(
+            errorResponse(request, 'UNAUTHENTICATED', 'Autentikasi diperlukan', 401, id),
+            startedAt
+          );
         }
         identity = user.profile.id;
       }
       if (options.rateLimit) {
         const rate = checkRateLimit(request, options.rateLimit, identity);
         if (!rate.allowed) {
-          return errorResponse(
-            request,
-            'RATE_LIMITED',
-            'Terlalu banyak percobaan. Coba lagi nanti.',
-            429,
-            id,
-            { 'Retry-After': String(rate.retryAfterSeconds) }
+          return withServerTiming(
+            errorResponse(
+              request,
+              'RATE_LIMITED',
+              'Terlalu banyak percobaan. Coba lagi nanti.',
+              429,
+              id,
+              { 'Retry-After': String(rate.retryAfterSeconds) }
+            ),
+            startedAt
           );
         }
       }
       const response = await handler(request, context);
-      return normalizeResponse(response, id);
+      return withServerTiming(await normalizeResponse(response, id), startedAt);
     } catch (error) {
       if (isRedirectError(error)) {
-        return errorResponse(
-          request,
-          isLoginRedirect(error) ? 'UNAUTHENTICATED' : 'FORBIDDEN',
-          isLoginRedirect(error) ? 'Autentikasi diperlukan' : 'Akses ditolak',
-          isLoginRedirect(error) ? 401 : 403,
-          id
+        return withServerTiming(
+          errorResponse(
+            request,
+            isLoginRedirect(error) ? 'UNAUTHENTICATED' : 'FORBIDDEN',
+            isLoginRedirect(error) ? 'Autentikasi diperlukan' : 'Akses ditolak',
+            isLoginRedirect(error) ? 401 : 403,
+            id
+          ),
+          startedAt
         );
       }
 
       console.error(`[api:${id}] unhandled route error`, error);
-      return errorResponse(request, 'INTERNAL_ERROR', 'Terjadi kesalahan pada server', 500, id);
+      return withServerTiming(
+        errorResponse(request, 'INTERNAL_ERROR', 'Terjadi kesalahan pada server', 500, id),
+        startedAt
+      );
     }
   };
 }

@@ -5,6 +5,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { withApiRoute } from '@/lib/api/route';
 import { getTotalPages } from '@/lib/pagination';
 import { queryCashiers } from '@/lib/server/list-queries';
+import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
 
 const cashierSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -43,11 +44,13 @@ async function handleGET(request: Request) {
 
   const { data, count } = await query;
   const totalPages = getTotalPages(count, limit);
+  const avatarUrls = await getCashierAvatarUrls(
+    supabase,
+    (data ?? []).map((cashier) => cashier.avatar_url)
+  );
   const cashiers = (data ?? []).map((cashier) => ({
     ...cashier,
-    avatar_src: cashier.avatar_url
-      ? `/api/storage/cashier-avatar?path=${encodeURIComponent(cashier.avatar_url)}`
-      : null,
+    avatar_src: cashier.avatar_url ? (avatarUrls.get(cashier.avatar_url) ?? null) : null,
   }));
   return NextResponse.json({
     cashiers,

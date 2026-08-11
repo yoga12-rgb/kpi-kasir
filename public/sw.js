@@ -1,9 +1,16 @@
-const CACHE_NAME = 'kpi-kasir-public-v2';
+const CACHE_NAME = 'kpi-kasir-public-v3';
 const CACHE_PREFIX = 'kpi-kasir-';
-const PUBLIC_ASSETS = new Set(['/manifest.webmanifest', '/logo.png', '/icons/icon.svg']);
+const PUBLIC_ASSETS = new Set([
+  '/manifest.webmanifest',
+  '/icons/favicon-16.png',
+  '/icons/favicon-32.png',
+  '/icons/apple-touch-icon.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+]);
 
 function isPublicAsset(url) {
-  return PUBLIC_ASSETS.has(url.pathname) || url.pathname.startsWith('/_next/static/');
+  return PUBLIC_ASSETS.has(url.pathname);
 }
 
 self.addEventListener('install', (event) => {

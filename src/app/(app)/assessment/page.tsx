@@ -13,64 +13,59 @@ export default async function AssessmentPage() {
   const profile = await requirePermission('assessment');
   const supabase = await createClient();
 
-  const { data: period } = await supabase
+  const periodPromise = supabase
     .from('period')
-    .select('*')
+    .select('id, label')
     .eq('status', 'open')
     .order('start_date', { ascending: false })
     .limit(1)
     .maybeSingle();
-
-  let branchIds: string[] = [];
-  if (profile.role === 'admin') {
-    const { data: branches } = await supabase.from('branch').select('id').eq('is_active', true);
-    branchIds = (branches ?? []).map((b) => b.id);
-  } else {
-    const { data: ub } = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    branchIds = (ub ?? []).map((x) => x.branch_id);
-  }
+  const branchScopePromise =
+    profile.role === 'admin'
+      ? supabase.from('branch').select('id').eq('is_active', true)
+      : supabase.from('user_branch').select('branch_id').eq('user_id', profile.id);
+  const [periodResult, branchScopeResult] = await Promise.all([periodPromise, branchScopePromise]);
+  const period = periodResult.data;
+  const branchIds =
+    profile.role === 'admin'
+      ? ((branchScopeResult.data ?? []) as { id: string }[]).map((branch) => branch.id)
+      : ((branchScopeResult.data ?? []) as { branch_id: string }[]).map(
+          (assignment) => assignment.branch_id
+        );
 
   const { data: cashiers } = await supabase
     .from('cashier')
-    .select('*, outlet!inner(branch_id, name, branch(id, name, code))')
+    .select('id, name, avatar_url, outlet!inner(branch_id, name, branch(id, name, code))')
     .eq('is_active', true)
     .in('outlet.branch_id', branchIds)
     .order('name');
 
-  // Skor per kasir (periode aktif)
-  const { data: scores } = period
-    ? await supabase
-        .from('cashier_period_score')
-        .select('cashier_id, total_score')
-        .eq('period_id', period.id)
-        .in(
-          'cashier_id',
-          (cashiers ?? []).map((c) => c.id)
-        )
-    : { data: [] };
+  const cashierIds = (cashiers ?? []).map((cashier) => cashier.id);
+  const [scoresResult, completionsResult, avatarMap] = await Promise.all([
+    period && cashierIds.length > 0
+      ? supabase
+          .from('cashier_period_score')
+          .select('cashier_id, total_score')
+          .eq('period_id', period.id)
+          .in('cashier_id', cashierIds)
+      : Promise.resolve({ data: [] }),
+    period && cashierIds.length > 0
+      ? supabase
+          .from('cashier_period_completion')
+          .select('cashier_id, status, assessed_details, total_details')
+          .eq('period_id', period.id)
+          .in('cashier_id', cashierIds)
+      : Promise.resolve({ data: [] }),
+    getCashierAvatarUrls(
+      supabase,
+      (cashiers ?? []).map((cashier) => cashier.avatar_url)
+    ),
+  ]);
+  const scores = scoresResult.data;
+  const completions = completionsResult.data;
 
   const scoreMap = new Map((scores ?? []).map((s) => [s.cashier_id, Number(s.total_score)]));
-
-  const { data: completions } = period
-    ? await supabase
-        .from('cashier_period_completion')
-        .select('cashier_id, status, assessed_details, total_details')
-        .eq('period_id', period.id)
-        .in(
-          'cashier_id',
-          (cashiers ?? []).map((c) => c.id)
-        )
-    : { data: [] };
-
   const completionMap = new Map((completions ?? []).map((c) => [c.cashier_id, c]));
-
-  const avatarMap = await getCashierAvatarUrls(
-    supabase,
-    (cashiers ?? []).map((c) => c.avatar_url)
-  );
 
   return (
     <div className="p-4">

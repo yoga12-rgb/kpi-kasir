@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/cn';
 
 export function initialsOf(name: string): string {
   return (name ?? '?')

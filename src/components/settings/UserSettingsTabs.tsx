@@ -2,7 +2,7 @@
 
 import { ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/cn';
 
 type TabId = 'users' | 'permissions' | 'invite';
 

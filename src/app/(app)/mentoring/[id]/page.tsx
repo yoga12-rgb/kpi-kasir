@@ -13,11 +13,17 @@ export default async function MentoringDetailPage({ params }: { params: Promise<
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: session } = await supabase
-    .from('mentoring_session')
-    .select('*, outlet(*, branch_id), conducted_by(full_name)')
-    .eq('id', id)
-    .single();
+  const [sessionResult, branchAccessResult] = await Promise.all([
+    supabase
+      .from('mentoring_session')
+      .select('id, visited_date, note_outlet, outlet(name, branch_id), conducted_by(full_name)')
+      .eq('id', id)
+      .single(),
+    profile.role === 'admin'
+      ? Promise.resolve({ data: [] as { branch_id: string }[] })
+      : supabase.from('user_branch').select('branch_id').eq('user_id', profile.id),
+  ]);
+  const session = sessionResult.data;
 
   if (!session) notFound();
 
@@ -25,17 +31,15 @@ export default async function MentoringDetailPage({ params }: { params: Promise<
 
   // Cek akses non-admin
   if (profile.role !== 'admin') {
-    const { data: ub } = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    const allowed = (ub ?? []).map((x) => x.branch_id);
+    const allowed = ((branchAccessResult.data ?? []) as { branch_id: string }[]).map(
+      (assignment) => assignment.branch_id
+    );
     if (!allowed.includes(outlet.branch_id)) redirect('/dashboard');
   }
 
   const { data: notes } = await supabase
     .from('mentoring_cashier_note')
-    .select('*, cashier(name)')
+    .select('id, note, cashier(name)')
     .eq('session_id', session.id);
 
   return (
