@@ -177,7 +177,7 @@ export function AppShellClient({
                   >
                     <Icon className="h-6 w-6" aria-hidden="true" />
                   </span>
-                  <span className="max-w-full whitespace-nowrap text-center leading-tight">
+                  <span className="max-w-full -translate-y-1.5 whitespace-nowrap text-center leading-tight">
                     {item.mobileLabel ?? item.label}
                   </span>
                 </Link>
