@@ -29,6 +29,15 @@ test.describe('mentoring photo evidence', () => {
     await galleryInput.setInputFiles(path.join(process.cwd(), 'public', 'logo.png'));
     await expect(page.getByText('Siap diupload')).toBeVisible();
 
+    let releaseEvidenceImage = () => {};
+    const evidenceImageGate = new Promise<void>((resolve) => {
+      releaseEvidenceImage = resolve;
+    });
+    await page.route(/\/api\/mentoring-sessions\/[^/]+\/evidence\/[^/]+$/, async (route) => {
+      if (route.request().method() === 'GET') await evidenceImageGate;
+      await route.continue();
+    });
+
     const uploadResponsePromise = page.waitForResponse(
       (response) =>
         response.request().method() === 'POST' &&
@@ -39,6 +48,11 @@ test.describe('mentoring photo evidence', () => {
     const uploadResponse = await uploadResponsePromise;
     expect(uploadResponse.status()).toBe(201);
     await expect(page).toHaveURL(/\/mentoring\/[0-9a-f-]+$/i, { timeout: 15_000 });
+
+    const evidenceSkeleton = page.getByTestId('mentoring-evidence-thumbnail-skeleton').first();
+    await expect(evidenceSkeleton).toBeVisible();
+    releaseEvidenceImage();
+    await expect(evidenceSkeleton).toBeHidden();
 
     const evidenceImage = page.getByAltText('Bukti foto 1').first();
     await expect(evidenceImage).toBeVisible();
