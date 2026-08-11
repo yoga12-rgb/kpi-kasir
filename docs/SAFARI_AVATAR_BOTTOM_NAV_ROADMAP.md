@@ -15,13 +15,13 @@ milestone karena perubahan cache avatar menyentuh batas keamanan data privat.
 | Status                       | `IMPLEMENTATION_COMPLETE_PENDING_DEVICE_VALIDATION`       |
 | Versi dokumen                | `1.1.0`                                                   |
 | Dibuat                       | 2026-08-12 WIB                                            |
-| Branch target                | `staging`                                                 |
+| Branch target                | `main` (production)                                       |
 | Baseline commit              | `a2f2a78`                                                 |
 | Milestone aktif              | `AVN-5`                                                   |
 | Perangkat laporan            | iPhone XR, Safari; versi iOS belum dicatat                |
 | Target backend               | Supabase staging `fkanacflupmyuohkjque`                   |
-| Target deploy                | Vercel Preview branch `staging`                           |
-| Production                   | Jangan diubah selama roadmap ini                          |
+| Target deploy                | Vercel production                                         |
+| Production                   | Push diminta user; physical device gate tetap pending     |
 | Perubahan user di luar scope | `supabase/config.toml`; jangan diubah, stage, atau revert |
 | Migrasi database             | Tidak direncanakan                                        |
 | Dependency baru              | Tidak diperlukan                                          |
