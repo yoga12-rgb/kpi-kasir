@@ -10,6 +10,7 @@ if (!baseUrl) {
 const protectedRequests = [
   { path: '/api/branches', method: 'GET' },
   { path: '/api/cashiers', method: 'GET' },
+  { path: '/api/users', method: 'GET' },
   { path: '/api/leaderboard', method: 'GET' },
   { path: '/api/mentoring-sessions', method: 'GET' },
   { path: '/api/notifications', method: 'GET' },

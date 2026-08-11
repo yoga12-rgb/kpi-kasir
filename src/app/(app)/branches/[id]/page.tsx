@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Search } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
 import { OutletForm } from '@/components/outlets/OutletForm';
 import { BranchEditForm } from '@/components/branches/BranchEditForm';
-import { PaginationControls } from '@/components/ui/PaginationControls';
+import {
+  BranchOutletListClient,
+  type BranchOutletListItem,
+} from '@/components/branches/BranchOutletListClient';
 import { requirePermission } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
-import { escapeIlike, getPageRange, getTotalPages, parsePage } from '@/lib/pagination';
+import { getTotalPages, parsePage } from '@/lib/pagination';
 import { createClient } from '@/lib/supabase/server';
+import { queryOutlets } from '@/lib/server/list-queries';
 
 export default async function BranchDetailPage({
   params,
@@ -27,7 +29,6 @@ export default async function BranchDetailPage({
   const search = listParams?.q?.trim().slice(0, 100) ?? '';
   const page = parsePage(listParams?.page);
   const pageSize = 25;
-  const { from, to } = getPageRange(page, pageSize);
   const supabase = await createClient();
 
   const { data: branch } = await supabase
@@ -48,14 +49,21 @@ export default async function BranchDetailPage({
     if (!userBranch) notFound();
   }
 
-  let outletQuery = supabase
-    .from('outlet')
-    .select('id, name, is_active, cashier(count)', { count: 'exact' })
-    .eq('branch_id', branch.id)
-    .order('name')
-    .range(from, to);
-  if (search) outletQuery = outletQuery.ilike('name', `%${escapeIlike(search)}%`);
+  const outletQuery = await queryOutlets(supabase, {
+    actor: profile,
+    branchId: branch.id,
+    page,
+    pageSize,
+    search,
+  });
   const { data: outlets, count: outletCount } = await outletQuery;
+  const initialItems: BranchOutletListItem[] = (outlets ?? []).map((outlet) => ({
+    id: outlet.id,
+    name: outlet.name,
+    isActive: outlet.is_active,
+    cashierCount: outlet.cashier?.[0]?.count ?? 0,
+  }));
+  const total = outletCount ?? 0;
 
   return (
     <div className="p-4">
@@ -70,51 +78,24 @@ export default async function BranchDetailPage({
             {branch.code ?? 'Tanpa kode'} &middot; {outletCount ?? 0} outlet
           </p>
         </div>
-        {branch.is_active ? <Badge variant="success">Aktif</Badge> : <Badge variant="muted">Nonaktif</Badge>}
+        {branch.is_active ? (
+          <Badge variant="success">Aktif</Badge>
+        ) : (
+          <Badge variant="muted">Nonaktif</Badge>
+        )}
       </div>
 
       <div className="mt-6">
         <h2 className="mb-3 text-lg font-semibold text-surface-900">Outlet</h2>
-        <form method="get" className="mb-3 flex items-end gap-2">
-          <label className="min-w-0 flex-1 text-xs font-medium text-surface-500">
-            Cari outlet
-            <input
-              name="q"
-              defaultValue={search}
-              maxLength={100}
-              placeholder="Nama outlet"
-              className="input mt-1"
-            />
-          </label>
-          <button type="submit" className="btn btn-secondary h-10 w-10 px-0" aria-label="Cari outlet" title="Cari">
-            <Search className="mx-auto h-4 w-4" />
-          </button>
-        </form>
-        <div className="space-y-3">
-          {(outlets ?? []).map((outlet) => (
-            <Link key={outlet.id} href={`/outlets/${outlet.id}`} className="block">
-              <Card className="transition-colors hover:bg-surface-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-surface-900">{outlet.name}</p>
-                    <p className="text-sm text-surface-500">
-                      {outlet.cashier?.[0]?.count ?? 0} kasir
-                    </p>
-                  </div>
-                  {outlet.is_active ? <Badge variant="success">Aktif</Badge> : <Badge variant="muted">Nonaktif</Badge>}
-                </div>
-              </Card>
-            </Link>
-          ))}
-          {(outlets ?? []).length === 0 && (
-            <p className="text-sm text-surface-500">Belum ada outlet.</p>
-          )}
-        </div>
-        <PaginationControls
-          pathname={`/branches/${branch.id}`}
-          params={{ q: search || undefined }}
-          page={page}
-          totalPages={getTotalPages(outletCount, pageSize)}
+        <BranchOutletListClient
+          branchId={branch.id}
+          initialResult={{
+            items: initialItems,
+            page,
+            pageSize,
+            total,
+            totalPages: getTotalPages(total, pageSize),
+          }}
         />
       </div>
 

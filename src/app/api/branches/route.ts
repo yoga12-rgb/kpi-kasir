@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { requireAdmin, requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { withApiRoute } from '@/lib/api/route';
-import { escapeIlike, getPageRange, getTotalPages } from '@/lib/pagination';
+import { getTotalPages } from '@/lib/pagination';
+import { queryBranches } from '@/lib/server/list-queries';
 
 const branchSchema = z.object({
   name: z.string().min(2),
@@ -21,33 +22,25 @@ async function handleGET(request: Request) {
   const profile = await requirePermission('branches.view');
   const params = new URL(request.url).searchParams;
   const parsed = listQuerySchema.safeParse(Object.fromEntries(params.entries()));
-  if (!parsed.success) return NextResponse.json({ error: 'Parameter cabang tidak valid' }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json({ error: 'Parameter cabang tidak valid' }, { status: 400 });
   const { limit, page, q } = parsed.data;
-  const { from, to } = getPageRange(page, limit);
   const supabase = await createClient();
-  let query = supabase
-    .from('branch')
-    .select('*, outlet(count)', { count: 'exact' })
-    .order('name')
-    .range(from, to);
-  if (q) query = query.or(`name.ilike.%${escapeIlike(q)}%,code.ilike.%${escapeIlike(q)}%`);
-  if (profile.role !== 'admin') {
-    const { data: userBranches } = await supabase
-      .from('user_branch')
-      .select('branch_id')
-      .eq('user_id', profile.id);
-    query = query.in(
-      'id',
-      (userBranches ?? []).map((userBranch) => userBranch.branch_id)
-    );
-  }
+  const query = await queryBranches(supabase, {
+    actor: profile,
+    page,
+    pageSize: limit,
+    search: q,
+  });
   const { data, count } = await query;
   const totalPages = getTotalPages(count, limit);
   return NextResponse.json({
     branches: data ?? [],
     page,
     limit,
+    pageSize: limit,
     total: count ?? 0,
+    totalPages,
     hasMore: page < totalPages,
   });
 }

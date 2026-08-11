@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { withApiRoute } from '@/lib/api/route';
-import { escapeIlike, getPageRange, getTotalPages } from '@/lib/pagination';
+import { getTotalPages } from '@/lib/pagination';
+import { queryCashiers } from '@/lib/server/list-queries';
 
 const cashierSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -17,35 +18,44 @@ const listQuerySchema = z.object({
   outletId: z.string().uuid().optional(),
   branchId: z.string().uuid().optional(),
   q: z.string().trim().max(100).optional(),
+  status: z.enum(['active', 'inactive', 'all']).default('active'),
 });
 
 async function handleGET(request: Request) {
-  await requirePermission('cashiers.view');
+  const profile = await requirePermission('cashiers.view');
   const searchParams = new URL(request.url).searchParams;
   const parsed = listQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
-  if (!parsed.success) return NextResponse.json({ error: 'Parameter kasir tidak valid' }, { status: 400 });
+  if (!parsed.success)
+    return NextResponse.json({ error: 'Parameter kasir tidak valid' }, { status: 400 });
   const { limit, page, outletId, branchId, q } = parsed.data;
-  const { from, to } = getPageRange(page, limit);
+  const status = profile.role === 'admin' ? parsed.data.status : 'active';
 
   const supabase = await createClient();
-  let query = supabase
-    .from('cashier')
-    .select('*, outlet!inner(name, branch:branch(name))', { count: 'exact' })
-    .eq('is_active', true)
-    .order('name')
-    .range(from, to);
-
-  if (outletId) query = query.eq('outlet_id', outletId);
-  if (branchId) query = query.eq('outlet.branch_id', branchId);
-  if (q) query = query.ilike('name', `%${escapeIlike(q)}%`);
+  const query = await queryCashiers(supabase, {
+    actor: profile,
+    status,
+    outletId,
+    branchId,
+    page,
+    pageSize: limit,
+    search: q,
+  });
 
   const { data, count } = await query;
   const totalPages = getTotalPages(count, limit);
+  const cashiers = (data ?? []).map((cashier) => ({
+    ...cashier,
+    avatar_src: cashier.avatar_url
+      ? `/api/storage/cashier-avatar?path=${encodeURIComponent(cashier.avatar_url)}`
+      : null,
+  }));
   return NextResponse.json({
-    cashiers: data ?? [],
+    cashiers,
     page,
     limit,
+    pageSize: limit,
     total: count ?? 0,
+    totalPages,
     hasMore: page < totalPages,
   });
 }

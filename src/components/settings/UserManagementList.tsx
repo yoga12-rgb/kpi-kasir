@@ -1,14 +1,14 @@
 'use client';
 
 import { Check, Loader2, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { UserRole } from '@/types/database';
 import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { getErrorMessage } from '@/lib/utils';
 
-interface ManagedUser {
+export interface ManagedUser {
   id: string;
   full_name: string;
   email: string;
@@ -28,6 +28,12 @@ export function UserManagementList({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUsers(initialUsers);
+    setSavedId(null);
+    setError(null);
+  }, [initialUsers]);
 
   async function saveUser(user: ManagedUser) {
     setPendingId(user.id);
@@ -145,12 +151,20 @@ export function UserManagementList({
                 onClick={() => saveUser(user)}
                 className="inline-flex items-center justify-center gap-1.5"
               >
-                {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isSaved ? <Check className="h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />}
+                {isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : isSaved ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
                 {isSaved ? 'Tersimpan' : 'Simpan'}
               </Button>
             </div>
 
-            {isCurrentUser && <p className="text-xs text-surface-500">Akun admin aktif saat ini.</p>}
+            {isCurrentUser && (
+              <p className="text-xs text-surface-500">Akun admin aktif saat ini.</p>
+            )}
           </Card>
         );
       })}

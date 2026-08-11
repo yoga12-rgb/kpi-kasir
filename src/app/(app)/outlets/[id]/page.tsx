@@ -1,17 +1,19 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
 import { CashierForm } from '@/components/cashiers/CashierForm';
+import {
+  OutletCashierListClient,
+  type OutletCashierListItem,
+} from '@/components/outlets/OutletCashierListClient';
 import { OutletEditForm } from '@/components/outlets/OutletEditForm';
-import { PaginationControls } from '@/components/ui/PaginationControls';
 import { requireAnyPermission } from '@/lib/auth/guards';
 import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
-import { escapeIlike, getPageRange, getTotalPages, parsePage } from '@/lib/pagination';
+import { getTotalPages, parsePage } from '@/lib/pagination';
 import { createClient } from '@/lib/supabase/server';
-import { formatEmploymentDuration } from '@/lib/utils';
+import { queryCashiers } from '@/lib/server/list-queries';
 
 export default async function OutletDetailPage({
   params,
@@ -36,7 +38,6 @@ export default async function OutletDetailPage({
   const search = listParams?.q?.trim().slice(0, 100) ?? '';
   const page = parsePage(listParams?.page);
   const pageSize = 25;
-  const { from, to } = getPageRange(page, pageSize);
   const supabase = await createClient();
 
   const { data: outlet } = await supabase
@@ -66,18 +67,24 @@ export default async function OutletDetailPage({
     is_active: boolean;
   }[] = [];
   if (canViewCashiers) {
-    let cashierQuery = supabase
-      .from('cashier')
-      .select('id, name, employment_start_date, is_active', { count: 'exact' })
-      .eq('outlet_id', outlet.id)
-      .eq('is_active', true)
-      .order('name')
-      .range(from, to);
-    if (search) cashierQuery = cashierQuery.ilike('name', `%${escapeIlike(search)}%`);
+    const cashierQuery = await queryCashiers(supabase, {
+      actor: profile,
+      status: 'active',
+      outletId: outlet.id,
+      page,
+      pageSize,
+      search,
+    });
     const result = await cashierQuery;
     cashiers = result.data ?? [];
     cashierCount = result.count ?? 0;
   }
+  const initialItems: OutletCashierListItem[] = cashiers.map((cashier) => ({
+    id: cashier.id,
+    name: cashier.name,
+    employmentStartDate: cashier.employment_start_date,
+    isActive: cashier.is_active,
+  }));
 
   return (
     <div className="p-4">
@@ -94,7 +101,11 @@ export default async function OutletDetailPage({
           <h1 className="text-xl font-bold text-surface-900">{outlet.name}</h1>
           <p className="text-sm text-surface-500">{branch?.name}</p>
         </div>
-        {outlet.is_active ? <Badge variant="success">Aktif</Badge> : <Badge variant="muted">Nonaktif</Badge>}
+        {outlet.is_active ? (
+          <Badge variant="success">Aktif</Badge>
+        ) : (
+          <Badge variant="muted">Nonaktif</Badge>
+        )}
       </div>
 
       {canUpdateOutlet && (
@@ -107,44 +118,15 @@ export default async function OutletDetailPage({
       {canViewCashiers && (
         <div className="mt-6">
           <h2 className="mb-3 text-lg font-semibold text-surface-900">Kasir</h2>
-          <form method="get" className="mb-3 flex items-end gap-2">
-            <label className="min-w-0 flex-1 text-xs font-medium text-surface-500">
-              Cari kasir
-              <input
-                name="q"
-                defaultValue={search}
-                maxLength={100}
-                placeholder="Nama kasir"
-                className="input mt-1"
-              />
-            </label>
-            <button type="submit" className="btn btn-secondary h-10 w-10 px-0" aria-label="Cari kasir" title="Cari">
-              <Search className="mx-auto h-4 w-4" />
-            </button>
-          </form>
-          <div className="space-y-2">
-            {cashiers.map((cashier) => (
-              <Link key={cashier.id} href={`/cashiers/${cashier.id}`} className="block">
-                <Card className="flex items-center justify-between transition-colors hover:bg-surface-100">
-                  <div>
-                    <p className="font-medium text-surface-900">{cashier.name}</p>
-                    <p className="text-xs text-surface-500">
-                      Masa kerja {formatEmploymentDuration(cashier.employment_start_date)}
-                    </p>
-                  </div>
-                  <span className="text-surface-400" aria-hidden="true">&rarr;</span>
-                </Card>
-              </Link>
-            ))}
-            {cashiers.length === 0 && (
-              <p className="text-sm text-surface-500">Belum ada kasir aktif.</p>
-            )}
-          </div>
-          <PaginationControls
-            pathname={`/outlets/${outlet.id}`}
-            params={{ q: search || undefined }}
-            page={page}
-            totalPages={getTotalPages(cashierCount, pageSize)}
+          <OutletCashierListClient
+            outletId={outlet.id}
+            initialResult={{
+              items: initialItems,
+              page,
+              pageSize,
+              total: cashierCount,
+              totalPages: getTotalPages(cashierCount, pageSize),
+            }}
           />
         </div>
       )}
