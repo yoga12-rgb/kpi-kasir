@@ -1,5 +1,4 @@
 import {
-  ClipboardCheck,
   Trophy,
   Building2,
   Users,
@@ -21,14 +20,6 @@ export default async function MenuPage() {
   const permissions = await getRolePermissions(profile.role);
 
   const items = [
-    {
-      href: '/mentoring',
-      label: 'Pendampingan',
-      desc: 'Catat kunjungan lapangan',
-      icon: ClipboardCheck,
-      color: 'text-primary-600 bg-primary-50',
-      permission: 'mentoring' as Permission,
-    },
     {
       href: '/leaderboard',
       label: 'Leaderboard',
@@ -89,30 +80,30 @@ export default async function MenuPage() {
 
   return (
     <div className="p-4">
-        <h1 className="text-xl font-bold text-surface-900">Menu</h1>
-        <p className="mt-0.5 text-sm text-surface-500">Semua fitur aplikasi</p>
+      <h1 className="text-xl font-bold text-surface-900">Menu</h1>
+      <p className="mt-0.5 text-sm text-surface-500">Semua fitur aplikasi</p>
 
-        <div className="mt-4 space-y-3">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavigationLink key={item.href} href={item.href} pendingIndicator className="block">
-                <Card className="flex items-center gap-4 transition-colors hover:bg-surface-100">
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.color}`}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-surface-900">{item.label}</p>
-                    <p className="text-sm text-surface-500">{item.desc}</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-surface-400" />
-                </Card>
-              </NavigationLink>
-            );
-          })}
-        </div>
+      <div className="mt-4 space-y-3">
+        {items.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavigationLink key={item.href} href={item.href} pendingIndicator className="block">
+              <Card className="flex items-center gap-4 transition-colors hover:bg-surface-100">
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${item.color}`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-surface-900">{item.label}</p>
+                  <p className="text-sm text-surface-500">{item.desc}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-surface-400" />
+              </Card>
+            </NavigationLink>
+          );
+        })}
+      </div>
     </div>
   );
 }
