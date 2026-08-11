@@ -40,7 +40,10 @@ Status 2026-08-12 01:38 WIB:
 - Migrasi staging: lokal/remote sinkron `0001..0058`; dry-run up-to-date dan remote DB lint nol
   temuan.
 - Bucket `mentoring-evidence`: private, maksimum 358400 byte, hanya `image/webp`.
-- Production `gxnlhtqnfgcbkfqoxpoa` tidak disentuh dan terakhir diverifikasi pada migrasi `0057`.
+- Production `gxnlhtqnfgcbkfqoxpoa` sudah menerima migration `0058` secara additive pada 2026-08-12.
+  Verifikasi read-only setelah push mengonfirmasi tabel `public.mentoring_evidence`, bucket private
+  `mentoring-evidence` dengan limit 358400 byte dan MIME `image/webp`, serta RPC
+  `reserve_mentoring_evidence`, `finalize_mentoring_evidence`, dan `abort_mentoring_evidence`.
 - Vercel Preview branch `staging` commit `8045dab` berhasil dideploy; seluruh quality gate lokal dan
   build Vercel lulus.
 - Preview tetap dilindungi Vercel Authentication; gunakan Protection Bypass for Automation untuk
@@ -67,14 +70,18 @@ Status 2026-08-12 01:38 WIB:
 - Backlog cleanup 101 row lulus dalam batch `100` lalu `1`. Dua invocation bersamaan pada enam row
   juga lulus: total removed `6`, already-removed `6`, failed `0`, remaining sintetis `0`, dan
   baseline staging pulih.
-- Audit read-only Supabase production melaporkan `backups: null` dan `pitr_enabled: false`.
-  Production belum memiliki restore point yang dapat dibuktikan dan tetap diblokir.
+- Audit read-only Supabase production masih melaporkan `backups: null` dan `pitr_enabled: false`.
+  Migration `0058` dilakukan sebagai rollout additive atas instruksi operator, tetapi production
+  tetap belum memiliki restore point yang dapat dibuktikan dan release gate backup/PITR belum lulus.
 
 Environment Vercel Preview memakai URL dan API key dari staging, origin deployment Preview,
 `CRON_SECRET` khusus staging, serta `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` untuk validasi saat ini.
-Production tidak berubah. Untuk rollback upload tanpa migrasi destruktif, set flag Preview kembali
-`false` dan redeploy. Setup singleton dan remote anon/RPC smoke sudah lulus. Jangan mencatat nilai
-key, bypass token, atau secret di dokumen ini.
+Vercel Production juga sudah memiliki `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` dan redeploy terbaru
+berstatus `Ready` pada alias `https://kpi-kasir.vercel.app`. Smoke publik production: `/login` `200`
+dan endpoint evidence yang aktif merespons guard method `405`, bukan `503` feature disabled.
+Untuk rollback upload tanpa migrasi destruktif, set flag environment yang sesuai kembali `false`
+dan redeploy. Setup singleton dan remote anon/RPC smoke sudah lulus. Jangan mencatat nilai key,
+bypass token, atau secret di dokumen ini.
 
 ### External Release Gates
 

@@ -1122,6 +1122,7 @@ Sesudah implementasi:
 | ME-5      | Codex, 2026-08-12 | `da4eeea`, Vercel Preview          | Picker/compression/two-stage submit lulus Chromium; protected views, skeleton, overflow, dan input 16px lulus pada WebKit emulasi iPhone 13                                            | `IMPLEMENTED_PENDING_VALIDATION` | iPhone fisik, camera/gallery format, offline/timeout, dan double-submit belum dijalankan      |
 | ME-6      | Codex, 2026-08-12 | `8045dab`, Vercel Preview          | Cron auth remote `200`; backlog 101 diproses 100+1; dua invocation pada 6 row menghasilkan removed 6, already-removed 6, failed 0; fixture dan baseline pulih                          | `IMPLEMENTED_PENDING_VALIDATION` | Scheduler/log production dan alert berbasis budget belum divalidasi                           |
 | ME-7      | Codex, 2026-08-12 | `8045dab`, Vercel Preview          | Quality gate lokal/Vercel hijau; role/scope/revocation/private Storage, concurrency, invalid input, dedupe, cleanup, dan WebKit Desktop Safari/iPhone 13 lulus; baseline dipertahankan | `BLOCKED_EXTERNAL_VALIDATION`    | iPhone fisik, backup/restore drill, keputusan retensi, dan rollout production belum dilakukan |
+| ME-8      | Codex, 2026-08-12 | `f5bb017`, Vercel Production       | Migration `0058` applied dan diverifikasi; bucket/RPC production tersedia; flag upload aktif; redeploy alias production `Ready`; `/login` `200` dan evidence guard tidak lagi `503` | `IMPLEMENTED_PENDING_VALIDATION` | Belum ada authenticated upload pada production, uji iPhone fisik, backup/PITR, restore drill, dan monitoring 24 jam |
 
 ### Bukti Staging 2026-08-12
 
@@ -1179,7 +1180,8 @@ Sesudah implementasi:
   pada `8045dab`. Seluruh commit terbaru berhasil dibangun oleh Vercel Preview dan quality gate
   lokal untuk patch terakhir lulus.
 - Migration `0058` sudah lulus clean reset, DB lint, dan security regression pada stack lokal
-  terpisah. Staging sudah menerima `0001..0058`; production tidak disentuh.
+  terpisah. Staging dan production sudah menerima `0001..0058`; production diverifikasi read-only
+  setelah migration dan bucket/RPC yang diperlukan tersedia.
 - Existing mentoring create tetap JSON + service-role-only atomic RPC; bukti dibuat setelah session `201`
   sehingga retry tidak pernah membuat session baru.
 - Upload off secara default. Set `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` hanya setelah migration,
@@ -1192,9 +1194,9 @@ Sesudah implementasi:
 - Smoke staging mengonfirmasi tabel dan RPC reserve/finalize/abort tersedia, tabel kosong untuk
   service role maupun anon, serta bucket `mentoring-evidence` private dengan hard limit 358400 byte
   dan MIME `image/webp`.
-- Production `gxnlhtqnfgcbkfqoxpoa` terakhir diverifikasi read-only masih pada `0001..0057` sebelum
-  workspace dipindahkan ke staging. Jangan menjalankan linked push production tanpa relink dan gate
-  produksi eksplisit.
+- Project linked lokal tetap staging `kpi-kasir-staging` (`fkanacflupmyuohkjque`). Production
+  `gxnlhtqnfgcbkfqoxpoa` hanya diakses melalui workspace sementara yang direlink eksplisit untuk
+  migration `0058`; workspace sementara sudah dibersihkan setelah verifikasi.
 - Region staging adalah `ap-northeast-2`, berbeda dari production `ap-southeast-2`; validasi schema
   tetap sah, tetapi baseline latensi staging tidak setara dengan production.
 - Vercel Preview branch tersedia di
@@ -1208,20 +1210,26 @@ Sesudah implementasi:
 - Flag-off browser/API smoke memakai session harness dan akun sintetis: branch/evidence tanpa sesi
   sama-sama `401`, branch setelah session `200`, lima route inti tidak error, picker foto tidak ada,
   sesi tanpa foto dibuat `201`, evidence row tetap 0, dan cleanup mengembalikan admin aktif 1 ke 1.
-- Flag upload sekarang aktif hanya pada Vercel Preview commit `da4eeea`. Flag-on smoke dengan akun
+- Flag upload aktif pada Vercel Preview dan Vercel Production. Production memakai
+  `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` dan redeploy terbaru sudah berstatus `Ready` pada alias
+  `https://kpi-kasir.vercel.app`. Smoke publik production `/login` merespons `200`; request GET
+  evidence tanpa session mencapai route method guard `405`, sehingga route tidak berada pada flag-off
+  response `503`.
+- Flag-on smoke dengan akun
   sintetis lulus: picker muncul setelah hydration, session/upload masing-masing `201`, hasil WebP
   privat tampil dan dapat dibuka di lightbox, delivery `200` memakai private cache policy dan ETag,
   conditional request `304`, serta metadata row/object memenuhi batas 358400 byte dan 1280 px.
-  Cleanup mempertahankan baseline data/foto milik user dan menyisakan nol fixture sintetis.
-  Production tetap tidak disentuh dan belum memiliki migration `0058`.
+  Cleanup mempertahankan baseline data/foto milik user dan menyisakan nol fixture sintetis. Production
+  sudah memiliki migration `0058` dan bucket/RPC telah diverifikasi, tetapi authenticated upload
+  production belum dijalankan.
 - Headless WebKit dapat men-submit form SSR sebelum hydration ketika test berinteraksi segera setelah
   `domcontentloaded`; matriks final memakai sesi Auth valid dan cookie SSR agar fokus pada protected
   route, API, dan UI foto. Login existing tetap dicakup CI, sedangkan login Safari fisik masuk
   checklist operator.
 - Matriks role/revocation, concurrency/failure input, dan WebKit emulasi sudah selesai. Yang belum
   selesai adalah iPhone/Safari fisik, penyediaan backup dan restore drill, baseline kapasitas
-  production, provider OAuth, dan owner approval untuk retention/no-delete. Audit production saat
-  ini menunjukkan physical backup/PITR belum tersedia.
+  production, authenticated production upload, provider OAuth, dan owner approval untuk
+  retention/no-delete. Audit production menunjukkan physical backup/PITR belum tersedia.
 
 ### Langkah Agent Berikutnya
 
@@ -1231,8 +1239,9 @@ Sesudah implementasi:
    database/Auth ke project disposable. Uji recovery bucket/object Storage secara terpisah karena
    restore-to-new-project tidak menyalin Storage; jangan menimpa production.
 3. Verifikasi Auth redirect/provider bila Google OAuth akan diaktifkan pada release.
-4. Setelah owner menyetujui retention/no-delete dan semua gate lulus, backup production, apply
-   migration, deploy dengan flag off, lalu enable bertahap dan pantau 24 jam/7 hari.
+4. Setelah owner menyetujui retention/no-delete dan backup/PITR tersedia, lakukan authenticated
+   production upload terkontrol, catat baseline Storage/latency/error, lalu pantau rollout selama
+   24 jam dan 7 hari. Migration dan flag production sudah diterapkan; jangan mengulang `db push`.
 
 ## 35. Referensi Resmi
 
