@@ -7,8 +7,8 @@ bukti pengujian, keputusan, risiko, dan handoff setelah setiap milestone lulus.
 
 Roadmap ini dibuat dari audit source code dan migrasi aktual. Source implementation, validasi
 database disposable lokal, migrasi database staging, dan deploy awal Vercel Preview sudah selesai.
-Smoke runtime authenticated serta matriks device/role belum lengkap sehingga fitur belum boleh
-dianggap siap production.
+Smoke runtime authenticated flag-off dan flag-on sudah lulus. Matriks device/role/failure belum
+lengkap sehingga fitur belum boleh dianggap siap production.
 
 ## 1. Identitas
 
@@ -1119,7 +1119,7 @@ Sesudah implementasi:
 | ME-4      | Codex, 2026-08-11 | working tree / belum deploy         | Protected delivery, image WebP privat, lazy gallery/lightbox, `ETag`, dan authorized conditional `304` lulus E2E desktop/mobile                                                                       | `IMPLEMENTED_PENDING_VALIDATION` | Revocation/cross-branch browser matrix dan Safari cache belum dijalankan                                                     |
 | ME-5      | Codex, 2026-08-11 | working tree / belum deploy         | Picker, client compression, two-stage submit, upload, redirect, gallery, dan lightbox lulus pada Chromium desktop dan mobile viewport                                                                 | `IMPLEMENTED_PENDING_VALIDATION` | Safari/iPhone nyata, offline/timeout/double-submit belum dijalankan                                                          |
 | ME-6      | Codex, 2026-08-11 | working tree / belum deploy         | Unit auth lulus; Storage upload/remove probe lulus; cron tanpa secret `401`; authorized cleanup menghapus 1 stale pending, gagal 0, remaining 0, dan mempertahankan 2 ready                           | `IMPLEMENTED_PENDING_VALIDATION` | Concurrent cron, backlog >100, dan Vercel preview cron belum dijalankan                                                      |
-| ME-7      | Codex, 2026-08-11 | `5cb14ed`, Vercel Preview            | CI/Vercel hijau; setup dan anon/RPC lulus; bypass aman; flag-off smoke: 2 API `401`, authenticated API `200`, 5 route, sesi `201`, 0 evidence, cleanup admin 1->1                              | `BLOCKED_EXTERNAL_VALIDATION`    | Upload flag-on, role/device/concurrency/cleanup runtime dan rollout production belum dilakukan                                |
+| ME-7      | Codex, 2026-08-11 | `2d374ff`, Vercel Preview            | CI/Vercel hijau; flag-off lulus; flag-on menghasilkan session/upload `201`, private WebP `200`, ETag `304`, gallery/lightbox dan metadata valid; cleanup 0 fixture/object, admin 1->1          | `BLOCKED_EXTERNAL_VALIDATION`    | Role/device/failure/concurrency, restore drill, dan rollout production belum dilakukan                                        |
 
 ## 33. Log Keputusan
 
@@ -1173,6 +1173,12 @@ Sesudah implementasi:
 - Flag-off browser/API smoke memakai session harness dan akun sintetis: branch/evidence tanpa sesi
   sama-sama `401`, branch setelah session `200`, lima route inti tidak error, picker foto tidak ada,
   sesi tanpa foto dibuat `201`, evidence row tetap 0, dan cleanup mengembalikan admin aktif 1 ke 1.
+- Flag upload sekarang aktif hanya pada Vercel Preview commit `2d374ff`. Flag-on smoke dengan akun
+  sintetis lulus: picker muncul setelah hydration, session/upload masing-masing `201`, hasil WebP
+  privat tampil dan dapat dibuka di lightbox, delivery `200` memakai private cache policy dan ETag,
+  conditional request `304`, serta metadata row/object memenuhi batas 358400 byte dan 1280 px.
+  Cleanup menyisakan 0 profil, 0 sesi, 0 evidence row, dan 0 object bucket; admin aktif kembali 1.
+  Production tetap tidak disentuh dan belum memiliki migration `0058`.
 - Login password browser terhadap user Auth yang baru dibuat seketika menghasilkan campuran `200`
   dan `400 validation_failed`; payload/key/project sudah benar dan direct Auth selalu berhasil.
   Session harness stabil. Catat sebagai keterbatasan fixture propagation/rate sebelum menyimpulkan
@@ -1182,13 +1188,11 @@ Sesudah implementasi:
 
 ### Langkah Agent Berikutnya
 
-1. Ubah `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` hanya pada Vercel Preview lalu redeploy branch
-   `staging`; jangan mengubah Production.
-2. Jalankan upload/delivery/ETag/lightbox smoke dengan synthetic test user dan cleanup object/row.
-3. Validasi role/cabang/revocation, HTTP concurrency, partial
+1. Validasi role/cabang/revocation, HTTP concurrency, partial
    failure, concurrent cleanup, backlog >100, dan monitoring.
-4. Jalankan matriks iPhone/Safari nyata serta catat ukuran, CPU/memory, dan kualitas fixture foto.
-5. Setelah owner menyetujui retention/no-delete dan semua gate lulus, backup production, apply
+2. Jalankan matriks iPhone/Safari nyata serta catat ukuran, CPU/memory, dan kualitas fixture foto.
+3. Verifikasi cron cleanup pada Preview, Auth redirect/provider, dan restore backup staging.
+4. Setelah owner menyetujui retention/no-delete dan semua gate lulus, backup production, apply
    migration, deploy dengan flag off, lalu enable bertahap dan pantau 24 jam/7 hari.
 
 ## 35. Referensi Resmi

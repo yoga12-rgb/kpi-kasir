@@ -34,24 +34,30 @@ environment target yang sudah dimuat, lalu pastikan `APP_ORIGIN_ALLOWLIST` memua
 
 ### Staging Aktif
 
-Status 2026-08-11 22:49 WIB:
+Status 2026-08-11 23:22 WIB:
 
 - Supabase staging: `kpi-kasir-staging` (`fkanacflupmyuohkjque`), region `ap-northeast-2`.
 - Migrasi staging: lokal/remote sinkron `0001..0058`; dry-run up-to-date dan remote DB lint nol
   temuan.
 - Bucket `mentoring-evidence`: private, maksimum 358400 byte, hanya `image/webp`.
 - Production `gxnlhtqnfgcbkfqoxpoa` tidak disentuh dan terakhir diverifikasi pada migrasi `0057`.
-- Vercel Preview branch `staging` commit `5cb14ed` berhasil dideploy dan setup admin selesai.
+- Vercel Preview branch `staging` commit `2d374ff` berhasil dideploy dan setup admin selesai.
 - Preview tetap dilindungi Vercel Authentication; gunakan Protection Bypass for Automation untuk
   smoke terotomasi, bukan mematikan proteksi atau membagikan kredensial admin.
 - Protection bypass tervalidasi dari `.env.local` yang diabaikan Git. Flag-off smoke lulus: API
   tanpa session `401`, API authenticated `200`, lima route inti, sesi `201`, evidence 0, dan cleanup
   admin sintetis 1->1.
+- Flag-on smoke lulus: picker ter-hydrate, session/upload `201`, private WebP delivery `200`, private
+  cache policy, ETag/conditional `304`, gallery/lightbox, metadata limit, dan object Storage valid.
+  Cleanup akhir menyisakan 0 profil/sesi/evidence sintetis dan 0 object bucket; admin aktif kembali
+  1. Gunakan listing Storage setelah jeda singkat untuk verifikasi remove, bukan download langsung
+  yang dapat melihat respons transien.
 
 Environment Vercel Preview memakai URL dan API key dari staging, origin deployment Preview,
-`CRON_SECRET` khusus staging, serta `MENTORING_EVIDENCE_UPLOAD_ENABLED=false` untuk deploy pertama.
-Setup singleton dan remote anon/RPC smoke sudah lulus. Jangan mencatat nilai key, bypass token, atau
-secret di dokumen ini.
+`CRON_SECRET` khusus staging, serta `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` untuk validasi saat ini.
+Production tidak berubah. Untuk rollback upload tanpa migrasi destruktif, set flag Preview kembali
+`false` dan redeploy. Setup singleton dan remote anon/RPC smoke sudah lulus. Jangan mencatat nilai
+key, bypass token, atau secret di dokumen ini.
 
 ## Backup, Migration, And Rollback
 

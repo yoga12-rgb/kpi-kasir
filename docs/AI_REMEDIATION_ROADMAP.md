@@ -11,9 +11,9 @@ step sebelumnya sudah dicatat di dokumen ini.
 
 | Field               | Nilai                                                        |
 | ------------------- | ------------------------------------------------------------ |
-| Versi dokumen       | 1.0.46                                                       |
+| Versi dokumen       | 1.0.47                                                       |
 | Dibuat              | 2026-08-09 14:19 WIB                                         |
-| Terakhir diperbarui | 2026-08-11 22:49 WIB                                         |
+| Terakhir diperbarui | 2026-08-11 23:22 WIB                                         |
 | Baseline commit     | `72e6cb3`                                                    |
 | Status produksi     | `BLOCKED` sampai Milestone M1-M8 selesai                     |
 | Milestone aktif     | M8.3 - Staging Dan Operational Readiness                     |
@@ -2293,7 +2293,7 @@ Supabase staging `kpi-kasir-staging` (`fkanacflupmyuohkjque`) sudah tersedia dan
 temuan, REST schema/RPC tersedia, dan bucket bukti foto private dengan batas 350 KiB WebP. Production
 tidak disentuh dan terakhir diverifikasi masih pada `0057`.
 
-Branch `staging` commit `5cb14ed` sudah terdeploy ke Vercel Preview dan seluruh Vercel/GitHub quality
+Branch `staging` commit `2d374ff` sudah terdeploy ke Vercel Preview dan seluruh Vercel/GitHub quality
 check lulus. Setup staging tervalidasi selesai dengan tepat satu admin aktif tanpa membaca PII.
 Remote anon dapat membaca flag setup tetapi tidak melihat profil admin, dan RPC reserve evidence
 ditolak `401/42501`.
@@ -2303,13 +2303,22 @@ smoke dengan synthetic session lulus: dua API tanpa session `401`, authenticated
 lima route inti terbuka, picker bukti tersembunyi, sesi dibuat `201`, evidence row 0, dan cleanup
 mengembalikan admin aktif dari 1 ke 1.
 
-Belum dapat ditutup dari workspace ini: upload flag-on dan role/device/failure matrix belum diuji,
-backup production nyata/restore drill belum ada, serta provider/redirect dan secret manager belum
+Flag-on smoke pada deployment yang sama juga lulus. Picker muncul setelah hydration, authenticated
+branch API `200`, create session dan upload masing-masing `201`, gambar hasil canonicalization tampil,
+delivery private WebP `200` membawa private cache policy dan ETag, conditional request `304`, serta
+lightbox berfungsi. Row berstatus `ready`, MIME/byte/dimensi/path memenuhi hard limit, dan object
+Storage dapat dibaca dengan ukuran yang sama. Cleanup akhir menyisakan 0 profil/sesi/evidence
+sintetis dan 0 object bucket, sementara admin aktif kembali 1. Verifikasi object dilakukan melalui
+listing Storage setelah jeda singkat karena download tepat setelah remove dapat melihat respons
+transien.
+
+Belum dapat ditutup dari workspace ini: role/device/failure/concurrency matrix belum diuji, backup
+production nyata/restore drill belum ada, serta provider/redirect dan secret manager belum
 diverifikasi. Jangan menandai COMPLETE sebelum operator mengisi bukti tersebut pada staging.
 
 - Backup sebelum migrasi production dan restore drill: menunggu akses/keputusan operator.
-- Smoke seluruh role dan akun nonaktif: admin synthetic flag-off lulus; manager/supervisor/inactive
-  serta flag-on masih menunggu eksekusi.
+- Smoke seluruh role dan akun nonaktif: admin synthetic flag-off dan flag-on lulus;
+  manager/supervisor/inactive masih menunggu eksekusi.
 - Auth providers, redirect, RLS, Storage, cron, environment secret: checklist tersedia; verifikasi
   production menunggu konfigurasi target.
 - Rollback migration/code dan maintenance notice: runbook tersedia.
@@ -2546,21 +2555,20 @@ Kondisi terakhir:
 - M8.2 selesai: `.github/workflows/quality-gate.yml` menjalankan generated-type verification,
   operations preflight, static, audit, build, API, database, RLS, dan browser/PWA gate. Authenticated
   CI membutuhkan secret user test non-production.
-- M8.3 masih IN_PROGRESS: staging DB, Vercel Preview, setup, bypass, dan flag-off smoke tersedia,
-  tetapi flag-on, backup/restore drill, serta verifikasi provider/secret/role/device belum selesai.
+- M8.3 masih IN_PROGRESS: staging DB, Vercel Preview, setup, bypass, serta flag-off/flag-on upload
+  smoke tersedia, tetapi backup/restore drill dan verifikasi provider/secret/role/device/failure
+  belum selesai.
 - M8.4 selesai: developer guide, technical audit, roadmap, dan operations runbook sinkron.
 
 Langkah berikutnya:
 
-1. Aktifkan upload hanya pada Vercel Preview dan redeploy branch `staging`.
-2. Jalankan evidence upload/delivery/ETag/cleanup smoke dengan synthetic user.
-3. Jalankan role/device/failure/concurrency matrix staging.
-4. Konfigurasikan user test non-production atau session harness sebagai CI secrets.
-5. Jalankan backup production dan restore drill sebelum migration release.
-6. Jalankan smoke test admin, manager, supervisor, dan inactive user pada staging.
-7. Verifikasi Auth provider/redirect, RLS, Storage private, cron secret, edge rate limit, dan PWA
+1. Jalankan role/device/failure/concurrency matrix staging.
+2. Konfigurasikan user test non-production atau session harness sebagai CI secrets.
+3. Jalankan backup production dan restore drill sebelum migration release.
+4. Jalankan smoke test manager, supervisor, dan inactive user pada staging.
+5. Verifikasi Auth provider/redirect, RLS, Storage private, cron secret, edge rate limit, dan PWA
    Cache Storage pada staging.
-8. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah semua check
+6. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah semua check
    eksternal lulus.
 
 ## 19. Log Perubahan Dokumen
@@ -2614,3 +2622,4 @@ Langkah berikutnya:
 | 1.0.44 | 2026-08-11 | Codex | Supabase staging dibuat operasional: migrasi 0001..0058 sinkron, dry-run up-to-date, remote lint nol temuan, REST/RPC dan bucket private tervalidasi; Vercel Preview/role/device tetap gate M8.3                 |
 | 1.0.45 | 2026-08-11 | Codex | Branch staging `5cb14ed` terdeploy dan seluruh CI/Vercel lulus; setup singleton/tepat satu admin serta anon/RPC remote smoke tervalidasi tanpa PII; automation bypass menjadi gate berikutnya              |
 | 1.0.46 | 2026-08-11 | Codex | Automation bypass dan flag-off Preview smoke lulus: unauth 401, auth 200, 5 route, sesi 201 tanpa evidence, picker tersembunyi, dan synthetic user/session cleanup mengembalikan admin 1->1              |
+| 1.0.47 | 2026-08-11 | Codex | Flag-on Preview smoke lulus pada `2d374ff`: session/upload 201, private WebP 200, ETag 304, gallery/lightbox dan metadata valid; cleanup menyisakan 0 fixture serta 0 object dan admin kembali 1             |
