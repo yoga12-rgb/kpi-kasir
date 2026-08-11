@@ -34,14 +34,15 @@ environment target yang sudah dimuat, lalu pastikan `APP_ORIGIN_ALLOWLIST` memua
 
 ### Staging Aktif
 
-Status 2026-08-11 23:22 WIB:
+Status 2026-08-12 01:38 WIB:
 
 - Supabase staging: `kpi-kasir-staging` (`fkanacflupmyuohkjque`), region `ap-northeast-2`.
 - Migrasi staging: lokal/remote sinkron `0001..0058`; dry-run up-to-date dan remote DB lint nol
   temuan.
 - Bucket `mentoring-evidence`: private, maksimum 358400 byte, hanya `image/webp`.
 - Production `gxnlhtqnfgcbkfqoxpoa` tidak disentuh dan terakhir diverifikasi pada migrasi `0057`.
-- Vercel Preview branch `staging` commit `2d374ff` berhasil dideploy dan setup admin selesai.
+- Vercel Preview branch `staging` commit `8045dab` berhasil dideploy; seluruh quality gate lokal dan
+  build Vercel lulus.
 - Preview tetap dilindungi Vercel Authentication; gunakan Protection Bypass for Automation untuk
   smoke terotomasi, bukan mematikan proteksi atau membagikan kredensial admin.
 - Protection bypass tervalidasi dari `.env.local` yang diabaikan Git. Flag-off smoke lulus: API
@@ -49,9 +50,25 @@ Status 2026-08-11 23:22 WIB:
   admin sintetis 1->1.
 - Flag-on smoke lulus: picker ter-hydrate, session/upload `201`, private WebP delivery `200`, private
   cache policy, ETag/conditional `304`, gallery/lightbox, metadata limit, dan object Storage valid.
-  Cleanup akhir menyisakan 0 profil/sesi/evidence sintetis dan 0 object bucket; admin aktif kembali
-  1. Gunakan listing Storage setelah jeda singkat untuk verifikasi remove, bukan download langsung
-  yang dapat melihat respons transien.
+  Cleanup akhir menyisakan nol profil/sesi/evidence sintetis dan mempertahankan baseline milik user:
+  1 user, 1 branch, 1 outlet, 1 sesi, serta 2 evidence. Gunakan listing Storage setelah jeda singkat
+  untuk verifikasi remove, bukan download langsung yang dapat melihat respons transien.
+- Role/scope matrix lulus: admin/manager/supervisor, owner/same-branch, cross-branch, assignment
+  revoked, inactive account, non-owner upload, RLS metadata, dan direct private Storage denial.
+- Concurrency/failure matrix lulus: empat upload paralel menghasilkan `201,201,201,409`; kuota tepat
+  tiga row/object; retry dedupe `200`; fake image `422`; MIME invalid `415`; oversize `413`; dan
+  cleanup terotorisasi menghapus tepat satu stale pending sintetis tanpa menyentuh ready evidence.
+- WebKit 26.5 lulus pada Desktop Safari dan emulasi iPhone 13 untuk empat route (`200`), skeleton
+  thumbnail/lightbox, image load, tanpa horizontal overflow, serta font input mobile minimum `16px`.
+  Error `_rsc`/`sw.js` akibat Preview Protection dicatat terpisah; error aplikasi lain tetap fatal.
+- Sensitive `CRON_SECRET` Preview dirotasi tanpa dicetak dan deployment lama diredeploy. Manual
+  authorized cleanup pada branch alias dan deployment unik masing-masing `200`, dengan
+  scanned/removed/failed/remaining `0/0/0/0`.
+- Backlog cleanup 101 row lulus dalam batch `100` lalu `1`. Dua invocation bersamaan pada enam row
+  juga lulus: total removed `6`, already-removed `6`, failed `0`, remaining sintetis `0`, dan
+  baseline staging pulih.
+- Audit read-only Supabase production melaporkan `backups: null` dan `pitr_enabled: false`.
+  Production belum memiliki restore point yang dapat dibuktikan dan tetap diblokir.
 
 Environment Vercel Preview memakai URL dan API key dari staging, origin deployment Preview,
 `CRON_SECRET` khusus staging, serta `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` untuk validasi saat ini.
@@ -59,14 +76,56 @@ Production tidak berubah. Untuk rollback upload tanpa migrasi destruktif, set fl
 `false` dan redeploy. Setup singleton dan remote anon/RPC smoke sudah lulus. Jangan mencatat nilai
 key, bypass token, atau secret di dokumen ini.
 
+### External Release Gates
+
+Production tetap `BLOCKED` sampai operator menyelesaikan langkah berikut:
+
+1. Pada iPhone fisik, buka Preview Safari dan login dengan akun staging. Uji pemilihan dari Camera
+   dan Photo Library, upload maksimal tiga foto, skeleton thumbnail/lightbox, close/navigation
+   lightbox, input form tanpa zoom, rotasi portrait/landscape, dan tidak ada overflow. Catat model,
+   versi iOS, format file yang diterima, durasi upload, hasil, serta screenshot tanpa PII.
+2. Audit CLI 2026-08-12 menemukan production belum memiliki physical backup/PITR yang dapat dipakai.
+   Aktifkan backup pada plan yang mendukung atau siapkan logical dump resmi Supabase CLI. Catat jenis
+   backup, timestamp, retention window, plan, dan operator; jangan kirim database password atau
+   service-role key.
+3. Setelah backup tersedia, gunakan `Restore to a New Project` untuk physical backup atau restore
+   logical dump ke project disposable. Verifikasi Auth dan tabel penting. Jangan restore di atas
+   production.
+4. Restore-to-new-project tidak menyalin object atau konfigurasi Storage. Uji prosedur recovery
+   Storage secara terpisah: inventaris bucket/object, buat ulang bucket private dan limitnya, salin
+   hanya fixture non-PII ke target disposable, lalu verifikasi akses API/RLS. Jangan menganggap clone
+   database sebagai backup foto.
+5. Konfirmasi kebijakan v1: evidence bersifat opsional, ready evidence tidak memiliki tombol delete,
+   dan tidak dihapus otomatis. Tetapkan masa retensi bisnis sebelum rollout bila kebijakan ini tidak
+   diterima.
+
+Catatan bukti iPhone yang harus dikembalikan operator:
+
+| Field                     | Nilai operator |
+| ------------------------- | -------------- |
+| Model iPhone              |                |
+| Versi iOS/Safari          |                |
+| Camera berhasil           | Ya/Tidak       |
+| Photo Library berhasil    | Ya/Tidak       |
+| Format input aktual       |                |
+| Jumlah/ukuran upload      |                |
+| Skeleton/lightbox         | Lulus/Gagal    |
+| Zoom input/overflow       | Lulus/Gagal    |
+| Rotasi portrait/landscape | Lulus/Gagal    |
+| Durasi dan catatan        |                |
+
 ## Backup, Migration, And Rollback
 
 1. Catat release SHA, migration terakhir, operator, dan waktu maintenance.
-2. Buat backup/PITR marker sebelum `supabase db push`; verifikasi backup dapat dibaca.
+2. Buat backup/PITR marker sebelum `supabase db push`; verifikasi timestamp/status backup dapat
+   dibaca dari dashboard dan catat retention window. Jika hasil CLI masih `backups: null` atau
+   `pitr_enabled: false`, hentikan release sebelum migration production.
 3. Push migration ke staging, lalu jalankan smoke semua role: admin, manager, supervisor, dan akun
    nonaktif.
-4. Uji restore backup staging ke database disposable. Verifikasi users, branch scope, roster
-   historis, score, Storage private, dan notification feed.
+4. Uji restore backup staging/production ke database disposable. Verifikasi users, branch scope,
+   roster historis, score, mentoring evidence metadata, dan notification feed. Jangan melakukan
+   restore drill di atas project production. Jalankan recovery Storage sebagai drill terpisah karena
+   restore database ke project baru tidak menyalin bucket/object.
 5. Push migration production dalam urutan repository. Jangan menjalankan `supabase db reset` pada
    production.
 6. Jika gagal, hentikan traffic mutasi, simpan log/request ID, rollback code ke SHA sebelumnya,
@@ -91,9 +150,15 @@ Jadwalkan `POST /api/cron/periods` dan `POST /api/cron/notifications` dengan hea
 diterima oleh endpoint. Jadwalkan `GET /api/cron/mentoring-evidence-cleanup` untuk membersihkan
 row `pending` dan object yang stale lebih dari dua jam. Cleanup diproses batch maksimal 100 row,
 tidak pernah menghapus evidence `ready`, dan hanya menerima path object dengan format canonical.
+Response `alreadyRemoved` berarti invocation lain telah lebih dulu menyelesaikan row yang sama dan
+bukan kegagalan. `failed` tetap harus nol; nilai di atas nol memerlukan investigasi dan rerun.
 Simpan `x-invocation-id`, status, durasi, dan response `requestId` pada log. Retry hanya untuk
 kegagalan transient. Dedupe notification, closed-period operation, dan cleanup pending harus tetap
 idempotent.
+
+Vercel Cron terjadwal memanggil URL deployment production. Gunakan Preview hanya untuk manual route
+smoke dengan Bearer secret yang benar; setelah rollout, periksa Settings > Cron Jobs dan runtime logs
+production untuk memastikan scheduler benar-benar memanggil endpoint tanpa redirect.
 
 Alert minimum:
 
@@ -104,6 +169,11 @@ Alert minimum:
 
 Manual cleanup verification (staging first): gunakan `GET /api/cron/mentoring-evidence-cleanup`
 dengan `Authorization: Bearer $CRON_SECRET` dan simpan `x-invocation-id` serta response counts.
+Validasi 2026-08-12 setelah rotasi secret menghasilkan `200` pada branch alias dan deployment unik;
+keduanya melaporkan scanned/removed/failed/remaining `0/0/0/0`.
+Validasi commit `8045dab` memproses backlog 101 row dalam dua request:
+scanned/removed/alreadyRemoved/failed/remaining `100/100/0/0/1`, lalu `1/1/0/0/0`. Dua request
+bersamaan pada enam row menghasilkan total removed/alreadyRemoved/failed `6/6/0` dan remaining `0`.
 Query read-only untuk capacity dan backlog:
 
 ```sql
@@ -145,3 +215,9 @@ tersisa, naikkan `CACHE_NAME` pada `public/sw.js` dan deploy ulang.
 3. Reproduksi di staging dengan data sintetis.
 4. Perbaiki code/migration melalui review dan quality gate.
 5. Validasi rollback/restore, lalu dokumentasikan root cause dan corrective action.
+
+## Referensi Operasional
+
+- [Supabase Restore to a New Project](https://supabase.com/docs/guides/platform/clone-project)
+- [Supabase Backup and Restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
+- [Vercel Managing Cron Jobs](https://vercel.com/docs/cron-jobs/manage-cron-jobs)

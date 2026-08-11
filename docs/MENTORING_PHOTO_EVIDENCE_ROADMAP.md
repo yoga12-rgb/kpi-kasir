@@ -7,8 +7,9 @@ bukti pengujian, keputusan, risiko, dan handoff setelah setiap milestone lulus.
 
 Roadmap ini dibuat dari audit source code dan migrasi aktual. Source implementation, validasi
 database disposable lokal, migrasi database staging, dan deploy awal Vercel Preview sudah selesai.
-Smoke runtime authenticated flag-off dan flag-on sudah lulus. Matriks device/role/failure belum
-lengkap sehingga fitur belum boleh dianggap siap production.
+Smoke runtime authenticated flag-off/flag-on dan seluruh matriks otomatis staging sudah lulus.
+Validasi iPhone fisik, backup/restore drill, dan keputusan retensi belum lengkap sehingga fitur
+belum boleh dianggap siap production.
 
 ## 1. Identitas
 
@@ -16,6 +17,7 @@ lengkap sehingga fitur belum boleh dianggap siap production.
 | ----------------------------- | ------------------------------------------------------- |
 | Status                        | `IMPLEMENTED_PENDING_EXTERNAL_VALIDATION`               |
 | Baseline commit               | `365c671`                                               |
+| Commit staging tervalidasi    | `8045dab`                                               |
 | Dibuat                        | 2026-08-11 WIB                                          |
 | Milestone aktif               | `ME-7`                                                  |
 | Framework                     | Next.js App Router 16.3.0, React 19, Tailwind CSS 3.4   |
@@ -1110,16 +1112,47 @@ Sesudah implementasi:
 
 ## 32. Bukti Milestone
 
-| Milestone | Agent/waktu       | Commit/deployment                   | Test dan metrik                                                                                                                                                                                       | Status                           | Catatan/artefak                                                                                                              |
-| --------- | ----------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| ME-0      | Codex, 2026-08-11 | working tree / belum deploy         | Audit source dan contract selesai; fixture device, storage baseline, dan owner approval belum dijalankan                                                                                              | `IMPLEMENTED_PENDING_VALIDATION` | Tidak menggunakan production sebagai target test                                                                             |
-| ME-1      | Codex, 2026-08-11 | working tree / staging `0058` applied | Clean local reset dan staging menerapkan `0001..0058`; local security regression lulus; remote DB lint nol temuan; RPC, tabel, RLS read, dan bucket private terverifikasi                         | `IMPLEMENTED_PENDING_VALIDATION` | Targeted concurrent request dan role/revocation browser matrix belum dijalankan                                               |
-| ME-2      | Codex, 2026-08-11 | working tree / belum deploy         | Sharp canonical WebP, signature/pixel/page/MIME/size checks, metadata stripping; full unit suite 13 file/43 test dan clean build lulus                                                                | `IMPLEMENTED_PENDING_VALIDATION` | Fixture EXIF/noisy lengkap dan benchmark CPU/memory belum ada                                                                |
-| ME-3      | Codex, 2026-08-11 | working tree / belum deploy         | E2E upload riil ke Storage lokal lulus desktop/mobile; reservation/finalize/path dan dedupe/kuota lulus SQL; API contract 11 request lulus; rollback mempertahankan pending bila Storage remove gagal | `IMPLEMENTED_PENDING_VALIDATION` | Failure injection setiap tahap dan concurrency HTTP belum dijalankan                                                         |
-| ME-4      | Codex, 2026-08-11 | working tree / belum deploy         | Protected delivery, image WebP privat, lazy gallery/lightbox, `ETag`, dan authorized conditional `304` lulus E2E desktop/mobile                                                                       | `IMPLEMENTED_PENDING_VALIDATION` | Revocation/cross-branch browser matrix dan Safari cache belum dijalankan                                                     |
-| ME-5      | Codex, 2026-08-11 | working tree / belum deploy         | Picker, client compression, two-stage submit, upload, redirect, gallery, dan lightbox lulus pada Chromium desktop dan mobile viewport                                                                 | `IMPLEMENTED_PENDING_VALIDATION` | Safari/iPhone nyata, offline/timeout/double-submit belum dijalankan                                                          |
-| ME-6      | Codex, 2026-08-11 | working tree / belum deploy         | Unit auth lulus; Storage upload/remove probe lulus; cron tanpa secret `401`; authorized cleanup menghapus 1 stale pending, gagal 0, remaining 0, dan mempertahankan 2 ready                           | `IMPLEMENTED_PENDING_VALIDATION` | Concurrent cron, backlog >100, dan Vercel preview cron belum dijalankan                                                      |
-| ME-7      | Codex, 2026-08-11 | `2d374ff`, Vercel Preview            | CI/Vercel hijau; flag-off lulus; flag-on menghasilkan session/upload `201`, private WebP `200`, ETag `304`, gallery/lightbox dan metadata valid; cleanup 0 fixture/object, admin 1->1          | `BLOCKED_EXTERNAL_VALIDATION`    | Role/device/failure/concurrency, restore drill, dan rollout production belum dilakukan                                        |
+| Milestone | Agent/waktu       | Commit/deployment                  | Test dan metrik                                                                                                                                                                        | Status                           | Catatan/artefak                                                                               |
+| --------- | ----------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| ME-0      | Codex, 2026-08-11 | working tree / belum deploy        | Audit source dan contract selesai; fixture device, storage baseline, dan owner approval belum dijalankan                                                                               | `IMPLEMENTED_PENDING_VALIDATION` | Tidak menggunakan production sebagai target test                                              |
+| ME-1      | Codex, 2026-08-12 | `da4eeea` / staging `0058` applied | Clean local reset dan staging menerapkan `0001..0058`; DB lint/RLS/bucket private serta role, branch scope, revocation, inactive user, dan direct Storage denial terverifikasi         | `IMPLEMENTED_PENDING_VALIDATION` | Schema/security staging tervalidasi; production belum menerima migration                      |
+| ME-2      | Codex, 2026-08-11 | working tree / belum deploy        | Sharp canonical WebP, signature/pixel/page/MIME/size checks, metadata stripping; full unit suite 13 file/43 test dan clean build lulus                                                 | `IMPLEMENTED_PENDING_VALIDATION` | Fixture EXIF/noisy lengkap dan benchmark CPU/memory belum ada                                 |
+| ME-3      | Codex, 2026-08-12 | `da4eeea`, Vercel Preview          | HTTP upload, kuota paralel `201,201,201,409`, dedupe retry `200`, fake image `422`, MIME `415`, oversize `413`, serta cleanup fixture/object lulus                                     | `IMPLEMENTED_PENDING_VALIDATION` | Forced Storage/finalize outage dan double-submit UI pada jaringan buruk belum dijalankan      |
+| ME-4      | Codex, 2026-08-12 | `da4eeea`, Vercel Preview          | Private delivery `200`, conditional `304`, branch/revocation denial, RLS metadata, lazy gallery/lightbox, skeleton, dan image load WebKit lulus                                        | `IMPLEMENTED_PENDING_VALIDATION` | Cache pada Safari/iPhone fisik belum dijalankan                                               |
+| ME-5      | Codex, 2026-08-12 | `da4eeea`, Vercel Preview          | Picker/compression/two-stage submit lulus Chromium; protected views, skeleton, overflow, dan input 16px lulus pada WebKit emulasi iPhone 13                                            | `IMPLEMENTED_PENDING_VALIDATION` | iPhone fisik, camera/gallery format, offline/timeout, dan double-submit belum dijalankan      |
+| ME-6      | Codex, 2026-08-12 | `8045dab`, Vercel Preview          | Cron auth remote `200`; backlog 101 diproses 100+1; dua invocation pada 6 row menghasilkan removed 6, already-removed 6, failed 0; fixture dan baseline pulih                          | `IMPLEMENTED_PENDING_VALIDATION` | Scheduler/log production dan alert berbasis budget belum divalidasi                           |
+| ME-7      | Codex, 2026-08-12 | `8045dab`, Vercel Preview          | Quality gate lokal/Vercel hijau; role/scope/revocation/private Storage, concurrency, invalid input, dedupe, cleanup, dan WebKit Desktop Safari/iPhone 13 lulus; baseline dipertahankan | `BLOCKED_EXTERNAL_VALIDATION`    | iPhone fisik, backup/restore drill, keputusan retensi, dan rollout production belum dilakukan |
+
+### Bukti Staging 2026-08-12
+
+- Role/security: manager, supervisor, dan admin dapat menjalankan jalur yang diizinkan; owner dan
+  same-branch delivery `200`, cross-branch/revoked `404`, unauthenticated/inactive `401`, serta
+  non-owner/revoked upload `403`. Direct Storage anon/auth ditolak dan RLS metadata hanya
+  mengembalikan row dalam scope.
+- Concurrency/idempotency: empat upload bersamaan menghasilkan `201,201,201,409`, tepat tiga row dan
+  object; retry file sama `200` dengan `deduplicated=true` tanpa menambah row. Fake image `422`, MIME
+  tidak didukung `415`, dan request oversize `413`.
+- Cleanup: cron tanpa secret `401`; handler terotorisasi terhadap staging menghapus tepat satu stale
+  pending sintetis, menyisakan nol pending sintetis, dan tidak menyentuh ready evidence. Setelah
+  rotasi sensitive secret dan redeploy, branch alias serta deployment unik masing-masing memberi
+  remote `200` dengan scanned/removed/failed/remaining `0/0/0/0`.
+- Cleanup backlog/concurrent: Preview commit `8045dab` memproses 101 stale pending dalam dua batch:
+  scanned/removed/failed/remaining `100/100/0/1`, lalu `1/1/0/0`. Dua invocation bersamaan membaca
+  enam row yang sama; pemenang melaporkan removed `6`, invocation lain already-removed `6`, keduanya
+  failed `0`, dan tidak ada pending/fixture sintetis tersisa.
+- WebKit 26.5: Desktop Safari dan emulasi iPhone 13 masing-masing memperoleh `200` untuk dashboard,
+  daftar Pendampingan, form baru, dan detail. Tidak ada overflow horizontal; skeleton thumbnail dan
+  lightbox tampil hanya di frame foto lalu hilang setelah image load; font input mobile minimum
+  `16px`.
+- Vercel Preview Protection menyebabkan error fetch `_rsc`/`sw.js` pada request yang tidak membawa
+  bypass di WebKit. Pola tersebut dipisahkan sebagai artefak Preview; semua error lain tetap menjadi
+  failure. Production tanpa Preview Protection tetap harus diuji setelah rollout.
+- Cleanup seluruh fixture lulus. Baseline staging setelah test tetap 1 user, 1 branch, 1 outlet,
+  1 sesi, dan 2 evidence milik user; synthetic user/branch/session nol.
+- Audit read-only project production `gxnlhtqnfgcbkfqoxpoa` melalui Supabase CLI melaporkan
+  `backups: null` dan `pitr_enabled: false`. Restore drill belum dapat dimulai sampai operator
+  menyediakan physical backup/PITR atau logical backup yang disetujui. Storage object wajib
+  dipulihkan melalui prosedur terpisah.
 
 ## 33. Log Keputusan
 
@@ -1142,7 +1175,9 @@ Sesudah implementasi:
 ### Status Implementasi Saat Ini
 
 - Source implementation untuk ME-1 sampai ME-6 sudah di-commit pada branch `staging` sebagai
-  `5cb14ed` dan berhasil dibangun oleh Vercel Preview.
+  `5cb14ed`; skeleton image-only ditambahkan pada `da4eeea`; cleanup concurrent dibuat idempotent
+  pada `8045dab`. Seluruh commit terbaru berhasil dibangun oleh Vercel Preview dan quality gate
+  lokal untuk patch terakhir lulus.
 - Migration `0058` sudah lulus clean reset, DB lint, dan security regression pada stack lokal
   terpisah. Staging sudah menerima `0001..0058`; production tidak disentuh.
 - Existing mentoring create tetap JSON + service-role-only atomic RPC; bukti dibuat setelah session `201`
@@ -1173,25 +1208,29 @@ Sesudah implementasi:
 - Flag-off browser/API smoke memakai session harness dan akun sintetis: branch/evidence tanpa sesi
   sama-sama `401`, branch setelah session `200`, lima route inti tidak error, picker foto tidak ada,
   sesi tanpa foto dibuat `201`, evidence row tetap 0, dan cleanup mengembalikan admin aktif 1 ke 1.
-- Flag upload sekarang aktif hanya pada Vercel Preview commit `2d374ff`. Flag-on smoke dengan akun
+- Flag upload sekarang aktif hanya pada Vercel Preview commit `da4eeea`. Flag-on smoke dengan akun
   sintetis lulus: picker muncul setelah hydration, session/upload masing-masing `201`, hasil WebP
   privat tampil dan dapat dibuka di lightbox, delivery `200` memakai private cache policy dan ETag,
   conditional request `304`, serta metadata row/object memenuhi batas 358400 byte dan 1280 px.
-  Cleanup menyisakan 0 profil, 0 sesi, 0 evidence row, dan 0 object bucket; admin aktif kembali 1.
+  Cleanup mempertahankan baseline data/foto milik user dan menyisakan nol fixture sintetis.
   Production tetap tidak disentuh dan belum memiliki migration `0058`.
-- Login password browser terhadap user Auth yang baru dibuat seketika menghasilkan campuran `200`
-  dan `400 validation_failed`; payload/key/project sudah benar dan direct Auth selalu berhasil.
-  Session harness stabil. Catat sebagai keterbatasan fixture propagation/rate sebelum menyimpulkan
-  regresi login pengguna existing.
-- Belum ada validasi iPhone/Safari nyata, role/revocation browser matrix, baseline kapasitas
-  production, atau owner approval untuk retention/no-delete.
+- Headless WebKit dapat men-submit form SSR sebelum hydration ketika test berinteraksi segera setelah
+  `domcontentloaded`; matriks final memakai sesi Auth valid dan cookie SSR agar fokus pada protected
+  route, API, dan UI foto. Login existing tetap dicakup CI, sedangkan login Safari fisik masuk
+  checklist operator.
+- Matriks role/revocation, concurrency/failure input, dan WebKit emulasi sudah selesai. Yang belum
+  selesai adalah iPhone/Safari fisik, penyediaan backup dan restore drill, baseline kapasitas
+  production, provider OAuth, dan owner approval untuk retention/no-delete. Audit production saat
+  ini menunjukkan physical backup/PITR belum tersedia.
 
 ### Langkah Agent Berikutnya
 
-1. Validasi role/cabang/revocation, HTTP concurrency, partial
-   failure, concurrent cleanup, backlog >100, dan monitoring.
-2. Jalankan matriks iPhone/Safari nyata serta catat ukuran, CPU/memory, dan kualitas fixture foto.
-3. Verifikasi cron cleanup pada Preview, Auth redirect/provider, dan restore backup staging.
+1. Jalankan matriks iPhone/Safari fisik serta catat model, iOS, input camera/gallery, format aktual,
+   ukuran, kualitas, input zoom, overflow, dan login.
+2. Sediakan physical backup/PITR production atau logical backup yang disetujui, lalu restore
+   database/Auth ke project disposable. Uji recovery bucket/object Storage secara terpisah karena
+   restore-to-new-project tidak menyalin Storage; jangan menimpa production.
+3. Verifikasi Auth redirect/provider bila Google OAuth akan diaktifkan pada release.
 4. Setelah owner menyetujui retention/no-delete dan semua gate lulus, backup production, apply
    migration, deploy dengan flag off, lalu enable bertahap dan pantau 24 jam/7 hari.
 
@@ -1202,6 +1241,8 @@ Sesudah implementasi:
 - [Supabase Storage file limits](https://supabase.com/docs/guides/storage/uploads/file-limits)
 - [Supabase Storage schema design](https://supabase.com/docs/guides/storage/schema/design)
 - [Supabase Storage size usage](https://supabase.com/docs/guides/platform/manage-your-usage/storage-size)
+- [Supabase Restore to a New Project](https://supabase.com/docs/guides/platform/clone-project)
+- [Supabase Backup and Restore using the CLI](https://supabase.com/docs/guides/platform/migrating-within-supabase/backup-restore)
 - [Vercel Functions limits](https://vercel.com/docs/functions/limitations)
 - [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs)
 - [Vercel Cron management and CRON_SECRET](https://vercel.com/docs/cron-jobs/manage-cron-jobs)

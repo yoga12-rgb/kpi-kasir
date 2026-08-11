@@ -11,9 +11,9 @@ step sebelumnya sudah dicatat di dokumen ini.
 
 | Field               | Nilai                                                        |
 | ------------------- | ------------------------------------------------------------ |
-| Versi dokumen       | 1.0.47                                                       |
+| Versi dokumen       | 1.0.50                                                       |
 | Dibuat              | 2026-08-09 14:19 WIB                                         |
-| Terakhir diperbarui | 2026-08-11 23:22 WIB                                         |
+| Terakhir diperbarui | 2026-08-12 01:38 WIB                                         |
 | Baseline commit     | `72e6cb3`                                                    |
 | Status produksi     | `BLOCKED` sampai Milestone M1-M8 selesai                     |
 | Milestone aktif     | M8.3 - Staging Dan Operational Readiness                     |
@@ -233,17 +233,17 @@ High/critical baru tidak boleh diterima tanpa catatan risiko dan persetujuan use
 
 ## 7. Ringkasan Milestone
 
-| Milestone | Tujuan                                  | Status        | Release gate                                                    |
-| --------- | --------------------------------------- | ------------- | --------------------------------------------------------------- |
-| M0        | Baseline audit dan verifikasi           | `COMPLETE`    | Audit, build, lint, unit test, DB lint tersedia                 |
-| M1        | Security containment                    | `COMPLETE`    | Seluruh exploit P0 ditolak oleh test                            |
-| M2        | Auth, setup, invite, dan lifecycle user | `COMPLETE`    | Signup/invite atomik dan user nonaktif benar-benar ditolak      |
-| M3        | Transaksi data operasional              | `COMPLETE`    | Tidak ada partial write pada kasir, mutasi, mentoring, foto     |
-| M4        | Integritas scoring dan periode          | `COMPLETE`    | Snapshot, completeness, dan close-period konsisten              |
-| M5        | Leaderboard dan dashboard benar         | `COMPLETE`    | Data per periode/cabang dan metrik dashboard tervalidasi        |
-| M6        | API, cron, performa, dan observability  | `COMPLETE`    | API contract, cron idempotent, list scalable                    |
-| M7        | UI, aksesibilitas, dan navigasi         | `COMPLETE`    | E2E viewport dan keyboard gate lulus                            |
-| M8        | Release hardening dan dokumentasi       | `IN_PROGRESS` | Full regression lulus; staging smoke eksternal masih diperlukan |
+| Milestone | Tujuan                                  | Status        | Release gate                                                      |
+| --------- | --------------------------------------- | ------------- | ----------------------------------------------------------------- |
+| M0        | Baseline audit dan verifikasi           | `COMPLETE`    | Audit, build, lint, unit test, DB lint tersedia                   |
+| M1        | Security containment                    | `COMPLETE`    | Seluruh exploit P0 ditolak oleh test                              |
+| M2        | Auth, setup, invite, dan lifecycle user | `COMPLETE`    | Signup/invite atomik dan user nonaktif benar-benar ditolak        |
+| M3        | Transaksi data operasional              | `COMPLETE`    | Tidak ada partial write pada kasir, mutasi, mentoring, foto       |
+| M4        | Integritas scoring dan periode          | `COMPLETE`    | Snapshot, completeness, dan close-period konsisten                |
+| M5        | Leaderboard dan dashboard benar         | `COMPLETE`    | Data per periode/cabang dan metrik dashboard tervalidasi          |
+| M6        | API, cron, performa, dan observability  | `COMPLETE`    | API contract, cron idempotent, list scalable                      |
+| M7        | UI, aksesibilitas, dan navigasi         | `COMPLETE`    | E2E viewport dan keyboard gate lulus                              |
+| M8        | Release hardening dan dokumentasi       | `IN_PROGRESS` | Automated staging gate lulus; device/backup/operator gate tersisa |
 
 ## 8. Milestone M1 - Security Containment
 
@@ -2474,8 +2474,12 @@ Agent berikutnya harus memulai dari M8.3 execution checklist dan tidak mengulang
 
 Kondisi terakhir:
 
-- Worktree memiliki perubahan M1.1 sampai M7.5 dan dokumen roadmap yang belum di-commit.
-- Supabase lokal berjalan, migrasi `0053` sudah diterapkan, dan DB lint lulus tanpa warning.
+- Branch `staging` berada pada `8045dab`; quality gate lokal dan Vercel Preview untuk commit tersebut
+  lulus. Setelah dokumen operasional di-commit, perubahan worktree yang tersisa hanya
+  `supabase/config.toml` milik user dan tidak boleh diubah/revert.
+- Supabase lokal sedang dihentikan karena volume lama PostgreSQL 15 tidak kompatibel dengan image
+  CLI PostgreSQL 17.6. Volume tidak dihapus; gate schema tetap memakai clean stack yang sebelumnya
+  lulus dan database staging remote `0001..0058`.
 - Terdapat data assessment lintas beberapa cabang; jangan reset tanpa izin.
 - RPC periode dan RPC user mutation terverifikasi hanya executable oleh `service_role`; `PUBLIC`,
   `anon`, dan `authenticated` ditolak.
@@ -2555,21 +2559,50 @@ Kondisi terakhir:
 - M8.2 selesai: `.github/workflows/quality-gate.yml` menjalankan generated-type verification,
   operations preflight, static, audit, build, API, database, RLS, dan browser/PWA gate. Authenticated
   CI membutuhkan secret user test non-production.
-- M8.3 masih IN_PROGRESS: staging DB, Vercel Preview, setup, bypass, serta flag-off/flag-on upload
-  smoke tersedia, tetapi backup/restore drill dan verifikasi provider/secret/role/device/failure
-  belum selesai.
+- M8.3 masih IN_PROGRESS: staging DB, Vercel Preview, setup, bypass, flag-off/flag-on upload, cron
+  backlog/concurrent, serta matriks role/cabang/revocation/failure/concurrency/WebKit sudah lulus.
+  Gate yang tersisa adalah iPhone Safari fisik, penyediaan backup dan restore drill,
+  provider/redirect, serta persetujuan owner atas retensi/no-delete.
 - M8.4 selesai: developer guide, technical audit, roadmap, dan operations runbook sinkron.
+
+Bukti staging 2026-08-12:
+
+- Role/security matrix lulus untuk admin, manager, supervisor, same-branch, cross-branch,
+  pencabutan assignment, dan akun nonaktif. Delivery menghasilkan `200/404/401` sesuai scope,
+  non-owner upload `403`, direct Storage anon/auth ditolak, dan RLS metadata tidak bocor cabang.
+- Empat upload paralel menghasilkan tiga `201` dan satu `409`; kuota tepat tiga row/object. Retry
+  file yang sama `200` terdeduplikasi. Fake image `422`, MIME tidak didukung `415`, dan oversize
+  `413`. Cleanup terotorisasi pada handler lokal menghapus tepat satu pending sintetis dan
+  mempertahankan seluruh ready evidence.
+- WebKit 26.5 lulus pada Desktop Safari dan emulasi iPhone 13: empat route masing-masing `200`, tidak
+  ada horizontal overflow, skeleton hanya berada pada thumbnail/lightbox, gambar selesai dimuat,
+  dan font kontrol mobile minimum `16px`. Error `_rsc`/`sw.js` akibat Vercel Preview Protection
+  dipisahkan sebagai artefak bypass; error JavaScript lain tetap menggagalkan test.
+- Setiap matriks memakai fixture ber-ID eksplisit dan cleanup `finally`. Baseline staging kembali ke
+  1 user, 1 branch, 1 outlet, 1 sesi, dan 2 evidence milik user; synthetic user/branch/session nol.
+- `CRON_SECRET` sensitive Preview dirotasi tanpa mencetak nilainya, disimpan lokal sebagai
+  `STAGING_CRON_SECRET`, lalu deployment yang sama diredeploy. Authorized remote cleanup pada branch
+  alias dan deployment unik masing-masing `200`; keduanya melaporkan scanned/removed/failed/remaining
+  `0/0/0/0`.
+- Patch idempotensi cron commit `8045dab` lulus typecheck, lint, 47 unit test, build, dan deployment
+  Preview. Backlog 101 stale pending diproses `100` lalu `1`, dengan failed `0` dan remaining
+  `1` lalu `0`. Dua invocation bersamaan pada enam row menghasilkan total removed `6`,
+  already-removed `6`, failed `0`, dan tidak menyisakan fixture; baseline staging kembali utuh.
+- Audit Supabase production read-only melaporkan `backups: null` dan `pitr_enabled: false`. Belum ada
+  restore point yang dapat dibuktikan sehingga production tetap diblokir sampai backup disediakan
+  dan restore drill ke target disposable lulus. Object Storage tetap membutuhkan prosedur recovery
+  terpisah.
 
 Langkah berikutnya:
 
-1. Jalankan role/device/failure/concurrency matrix staging.
-2. Konfigurasikan user test non-production atau session harness sebagai CI secrets.
-3. Jalankan backup production dan restore drill sebelum migration release.
-4. Jalankan smoke test manager, supervisor, dan inactive user pada staging.
-5. Verifikasi Auth provider/redirect, RLS, Storage private, cron secret, edge rate limit, dan PWA
-   Cache Storage pada staging.
-6. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah semua check
-   eksternal lulus.
+1. Jalankan checklist kamera/gallery, login, upload, lightbox, input zoom, dan overflow pada iPhone
+   Safari fisik; catat model, versi iOS, hasil, dan screenshot tanpa PII.
+2. Sediakan backup production: aktifkan physical backup/PITR pada plan yang mendukung atau buat
+   logical backup dengan prosedur resmi dan kredensial operator. Setelah tersedia, lakukan restore
+   drill ke database disposable; jangan melakukan restore di atas production.
+3. Verifikasi provider Google/redirect hanya bila OAuth akan diaktifkan saat release.
+4. Isi bukti operator pada M8.3, lalu ubah statusnya menjadi `COMPLETE` hanya setelah seluruh check
+   eksternal lulus. Production tetap pada migration `0057` sampai gate ini selesai.
 
 ## 19. Log Perubahan Dokumen
 
@@ -2619,7 +2652,10 @@ Langkah berikutnya:
 | 1.0.41 | 2026-08-09 | Codex | Final gate diulang setelah PWA test: typecheck, lint, unit 35/35, build, audit, types, operations, DB lint, security regression, API smoke, dan E2E 8/8 lulus                                                        |
 | 1.0.42 | 2026-08-09 | Codex | Instruksi PWA runbook diperjelas untuk Bash dan PowerShell; tidak ada perubahan perilaku aplikasi                                                                                                                    |
 | 1.0.43 | 2026-08-11 | Codex | Gate lokal diulang untuk migration 0058 dan bukti foto: full E2E 17 pass/3 expected skip/0 fail; linked production read-only masih 0057 dan staging tetap menjadi blocker M8.3                                       |
-| 1.0.44 | 2026-08-11 | Codex | Supabase staging dibuat operasional: migrasi 0001..0058 sinkron, dry-run up-to-date, remote lint nol temuan, REST/RPC dan bucket private tervalidasi; Vercel Preview/role/device tetap gate M8.3                 |
-| 1.0.45 | 2026-08-11 | Codex | Branch staging `5cb14ed` terdeploy dan seluruh CI/Vercel lulus; setup singleton/tepat satu admin serta anon/RPC remote smoke tervalidasi tanpa PII; automation bypass menjadi gate berikutnya              |
-| 1.0.46 | 2026-08-11 | Codex | Automation bypass dan flag-off Preview smoke lulus: unauth 401, auth 200, 5 route, sesi 201 tanpa evidence, picker tersembunyi, dan synthetic user/session cleanup mengembalikan admin 1->1              |
-| 1.0.47 | 2026-08-11 | Codex | Flag-on Preview smoke lulus pada `2d374ff`: session/upload 201, private WebP 200, ETag 304, gallery/lightbox dan metadata valid; cleanup menyisakan 0 fixture serta 0 object dan admin kembali 1             |
+| 1.0.44 | 2026-08-11 | Codex | Supabase staging dibuat operasional: migrasi 0001..0058 sinkron, dry-run up-to-date, remote lint nol temuan, REST/RPC dan bucket private tervalidasi; Vercel Preview/role/device tetap gate M8.3                     |
+| 1.0.45 | 2026-08-11 | Codex | Branch staging `5cb14ed` terdeploy dan seluruh CI/Vercel lulus; setup singleton/tepat satu admin serta anon/RPC remote smoke tervalidasi tanpa PII; automation bypass menjadi gate berikutnya                        |
+| 1.0.46 | 2026-08-11 | Codex | Automation bypass dan flag-off Preview smoke lulus: unauth 401, auth 200, 5 route, sesi 201 tanpa evidence, picker tersembunyi, dan synthetic user/session cleanup mengembalikan admin 1->1                          |
+| 1.0.47 | 2026-08-11 | Codex | Flag-on Preview smoke lulus pada `2d374ff`: session/upload 201, private WebP 200, ETag 304, gallery/lightbox dan metadata valid; cleanup menyisakan 0 fixture serta 0 object dan admin kembali 1                     |
+| 1.0.48 | 2026-08-12 | Codex | Matriks staging role/scope, concurrency, cleanup, dan WebKit lulus; blocker: iPhone fisik, cron, dan restore                                                                                                         |
+| 1.0.49 | 2026-08-12 | Codex | Sensitive cron Preview dirotasi; redeploy dan dua authorized remote cleanup smoke `200`                                                                                                                              |
+| 1.0.50 | 2026-08-12 | Codex | Cleanup Preview lulus backlog 101 dan concurrent invocation secara idempotent pada `8045dab`; audit read-only menemukan production belum memiliki physical backup/PITR yang dapat dipakai untuk restore drill        |
