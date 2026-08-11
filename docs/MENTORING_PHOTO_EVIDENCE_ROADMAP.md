@@ -6,8 +6,9 @@ menyimpan file yang lebih besar atau lebih banyak dari kebutuhan. Agent wajib me
 bukti pengujian, keputusan, risiko, dan handoff setelah setiap milestone lulus.
 
 Roadmap ini dibuat dari audit source code dan migrasi aktual. Source implementation, validasi
-database disposable lokal, dan migrasi database staging sudah selesai. Vercel Preview serta matriks
-device/role belum lengkap sehingga fitur belum boleh dianggap siap production.
+database disposable lokal, migrasi database staging, dan deploy awal Vercel Preview sudah selesai.
+Smoke runtime authenticated serta matriks device/role belum lengkap sehingga fitur belum boleh
+dianggap siap production.
 
 ## 1. Identitas
 
@@ -1118,7 +1119,7 @@ Sesudah implementasi:
 | ME-4      | Codex, 2026-08-11 | working tree / belum deploy         | Protected delivery, image WebP privat, lazy gallery/lightbox, `ETag`, dan authorized conditional `304` lulus E2E desktop/mobile                                                                       | `IMPLEMENTED_PENDING_VALIDATION` | Revocation/cross-branch browser matrix dan Safari cache belum dijalankan                                                     |
 | ME-5      | Codex, 2026-08-11 | working tree / belum deploy         | Picker, client compression, two-stage submit, upload, redirect, gallery, dan lightbox lulus pada Chromium desktop dan mobile viewport                                                                 | `IMPLEMENTED_PENDING_VALIDATION` | Safari/iPhone nyata, offline/timeout/double-submit belum dijalankan                                                          |
 | ME-6      | Codex, 2026-08-11 | working tree / belum deploy         | Unit auth lulus; Storage upload/remove probe lulus; cron tanpa secret `401`; authorized cleanup menghapus 1 stale pending, gagal 0, remaining 0, dan mempertahankan 2 ready                           | `IMPLEMENTED_PENDING_VALIDATION` | Concurrent cron, backlog >100, dan Vercel preview cron belum dijalankan                                                      |
-| ME-7      | Codex, 2026-08-11 | staging DB / belum deploy           | Gate lokal lulus; staging sinkron `0001..0058`; dry-run up-to-date; DB lint nol temuan; REST/RPC schema dan bucket private 350 KiB WebP lulus smoke                                             | `BLOCKED_EXTERNAL_VALIDATION`    | Vercel Preview belum dikonfigurasi; role/device/concurrency/cleanup runtime dan rollout production belum dilakukan            |
+| ME-7      | Codex, 2026-08-11 | `5cb14ed`, Vercel Preview            | CI/Vercel hijau; setup dan anon/RPC lulus; bypass aman; flag-off smoke: 2 API `401`, authenticated API `200`, 5 route, sesi `201`, 0 evidence, cleanup admin 1->1                              | `BLOCKED_EXTERNAL_VALIDATION`    | Upload flag-on, role/device/concurrency/cleanup runtime dan rollout production belum dilakukan                                |
 
 ## 33. Log Keputusan
 
@@ -1140,7 +1141,8 @@ Sesudah implementasi:
 
 ### Status Implementasi Saat Ini
 
-- Source implementation untuk ME-1 sampai ME-6 sudah ada di working tree, tetapi belum commit/deploy.
+- Source implementation untuk ME-1 sampai ME-6 sudah di-commit pada branch `staging` sebagai
+  `5cb14ed` dan berhasil dibangun oleh Vercel Preview.
 - Migration `0058` sudah lulus clean reset, DB lint, dan security regression pada stack lokal
   terpisah. Staging sudah menerima `0001..0058`; production tidak disentuh.
 - Existing mentoring create tetap JSON + service-role-only atomic RPC; bukti dibuat setelah session `201`
@@ -1160,17 +1162,30 @@ Sesudah implementasi:
   produksi eksplisit.
 - Region staging adalah `ap-northeast-2`, berbeda dari production `ap-southeast-2`; validasi schema
   tetap sah, tetapi baseline latensi staging tidak setara dengan production.
-- Vercel CLI dan sesi login tidak tersedia di mesin ini. Vercel Preview belum diarahkan ke staging
-  dan tidak boleh memakai credential production.
+- Vercel Preview branch tersedia di
+  `https://kpi-kasir-git-staging-yoga-septriana-s-projects.vercel.app`. Redeploy setelah konfigurasi
+  environment sukses; setup staging menghasilkan tepat satu admin aktif, completed timestamp, dan
+  claim yang sudah dibersihkan.
+- Preview tetap memakai Vercel Authentication. Protection Bypass for Automation tersimpan hanya di
+  `.env.local` yang diabaikan Git; header bypass tervalidasi tanpa membuka Preview ke publik.
+- Remote anon smoke lulus: flag `admin_created` dapat dibaca, tabel `users` mengembalikan array
+  kosong walaupun admin ada, dan RPC reserve evidence ditolak `401` dengan PostgreSQL code `42501`.
+- Flag-off browser/API smoke memakai session harness dan akun sintetis: branch/evidence tanpa sesi
+  sama-sama `401`, branch setelah session `200`, lima route inti tidak error, picker foto tidak ada,
+  sesi tanpa foto dibuat `201`, evidence row tetap 0, dan cleanup mengembalikan admin aktif 1 ke 1.
+- Login password browser terhadap user Auth yang baru dibuat seketika menghasilkan campuran `200`
+  dan `400 validation_failed`; payload/key/project sudah benar dan direct Auth selalu berhasil.
+  Session harness stabil. Catat sebagai keterbatasan fixture propagation/rate sebelum menyimpulkan
+  regresi login pengguna existing.
 - Belum ada validasi iPhone/Safari nyata, role/revocation browser matrix, baseline kapasitas
   production, atau owner approval untuk retention/no-delete.
 
 ### Langkah Agent Berikutnya
 
-1. Isi environment Vercel Preview dengan URL/key staging dan origin Preview; simpan service role dan
-   `CRON_SECRET` hanya sebagai secret, lalu deploy branch dengan upload flag off.
-2. Jalankan setup admin staging dan smoke create/list/detail sebelum mengaktifkan upload.
-3. Aktifkan upload hanya di staging dan validasi role/cabang/revocation, HTTP concurrency, partial
+1. Ubah `MENTORING_EVIDENCE_UPLOAD_ENABLED=true` hanya pada Vercel Preview lalu redeploy branch
+   `staging`; jangan mengubah Production.
+2. Jalankan upload/delivery/ETag/lightbox smoke dengan synthetic test user dan cleanup object/row.
+3. Validasi role/cabang/revocation, HTTP concurrency, partial
    failure, concurrent cleanup, backlog >100, dan monitoring.
 4. Jalankan matriks iPhone/Safari nyata serta catat ukuran, CPU/memory, dan kualitas fixture foto.
 5. Setelah owner menyetujui retention/no-delete dan semua gate lulus, backup production, apply
