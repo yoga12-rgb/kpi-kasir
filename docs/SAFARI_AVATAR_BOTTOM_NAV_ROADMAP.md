@@ -12,8 +12,8 @@ milestone karena perubahan cache avatar menyentuh batas keamanan data privat.
 
 | Field                        | Nilai                                                     |
 | ---------------------------- | --------------------------------------------------------- |
-| Status                       | `IMPLEMENTATION_COMPLETE_PENDING_DEVICE_VALIDATION`       |
-| Versi dokumen                | `1.1.0`                                                   |
+| Status                       | `DEPLOYED_PENDING_DEVICE_VALIDATION`                      |
+| Versi dokumen                | `1.2.0`                                                   |
 | Dibuat                       | 2026-08-12 WIB                                            |
 | Branch target                | `main` (production)                                       |
 | Baseline commit              | `a2f2a78`                                                 |
@@ -595,29 +595,30 @@ dari user/operator.
 
 ## 22. Bukti Milestone
 
-| Milestone | Agent/waktu       | Commit/deployment  | Test dan metrik                                              | Status                           | Catatan/artefak                                      |
-| --------- | ----------------- | ------------------ | ------------------------------------------------------------ | -------------------------------- | ---------------------------------------------------- |
-| AVN-0     | Codex, 2026-08-12 | `a2f2a78` baseline | Audit source selesai; device/network evidence belum tersedia | `IMPLEMENTED_PENDING_VALIDATION` | Supabase lokal tidak tersedia untuk network capture  |
-| AVN-1     | Codex, 2026-08-12 | Worktree           | Typecheck, lint, unit test, dan build lulus                  | `COMPLETE`                       | Skeleton, decode lifecycle, dan initials fallback    |
-| AVN-2     | Codex, 2026-08-12 | Worktree           | Unit validator lulus; API integration belum dapat dijalankan | `IMPLEMENTED_PENDING_VALIDATION` | ETag/304 auth-gated; `Vary: Cookie` dipertahankan    |
-| AVN-3     | Codex, 2026-08-12 | Worktree           | Typecheck, lint, build lulus; physical safe-area belum diuji | `IMPLEMENTED_PENDING_VALIDATION` | Tinggi 76 px, icon 24 px, active lift 12 px          |
-| AVN-4     | Codex, 2026-08-12 | Worktree           | 36 test terdaftar; WebKit project + CI install ditambahkan   | `IMPLEMENTED_PENDING_CI`         | Authenticated E2E menunggu credential non-production |
-| AVN-5     | Belum             | -                  | -                                                            | `READY`                          | -                                                    |
+| Milestone | Agent/waktu       | Commit/deployment  | Test dan metrik                                              | Status                               | Catatan/artefak                                                       |
+| --------- | ----------------- | ------------------ | ------------------------------------------------------------ | ------------------------------------ | --------------------------------------------------------------------- |
+| AVN-0     | Codex, 2026-08-12 | `a2f2a78` baseline | Audit source selesai; device/network evidence belum tersedia | `IMPLEMENTED_PENDING_VALIDATION`     | Supabase lokal tidak tersedia untuk network capture                   |
+| AVN-1     | Codex, 2026-08-12 | `6efe476`          | Typecheck, lint, unit test, dan build lulus                  | `COMPLETE`                           | Skeleton, decode lifecycle, dan initials fallback                     |
+| AVN-2     | Codex, 2026-08-12 | `6efe476`          | Unit validator lulus; API integration belum dapat dijalankan | `IMPLEMENTED_PENDING_VALIDATION`     | ETag/304 auth-gated; `Vary: Cookie` dipertahankan                     |
+| AVN-3     | Codex, 2026-08-12 | `6efe476`          | Typecheck, lint, build lulus; physical safe-area belum diuji | `IMPLEMENTED_PENDING_VALIDATION`     | Tinggi 76 px, icon 24 px, active lift 12 px                           |
+| AVN-4     | Codex, 2026-08-12 | `6efe476`          | 36 test terdaftar; WebKit project + CI install ditambahkan   | `IMPLEMENTED_PENDING_CI`             | Authenticated E2E menunggu credential non-production                  |
+| AVN-5     | Codex, 2026-08-12 | `d7e48aa`          | `/login` 200; avatar tanpa session 401; `private, no-store`  | `DEPLOYED_PENDING_DEVICE_VALIDATION` | iPhone XR physical gate dan authenticated staging smoke masih pending |
 
 ## 23. Decision Log
 
-| Tanggal    | Keputusan                                                          | Alasan                                                            | Status                   |
-| ---------- | ------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------------------ |
-| 2026-08-12 | Ukur Safari sebelum mengubah cache header                          | Network refetch dan decode remount memerlukan solusi berbeda      | `ACCEPTED`               |
-| 2026-08-12 | Skeleton tidak memiliki minimum display duration                   | Cache hit tidak boleh diperlambat demi menampilkan skeleton       | `ACCEPTED`               |
-| 2026-08-12 | Pertahankan private proxy dan Service Worker public-only           | Auth revocation lebih penting daripada cache lintas session       | `ACCEPTED`               |
-| 2026-08-12 | Pertahankan `Vary: Cookie` sampai ada bukti dan security review    | Menghindari pelemahan cache partition tanpa threat model          | `ACCEPTED`               |
-| 2026-08-12 | Gunakan CSS transition untuk bottom nav                            | Perubahan sederhana tidak membutuhkan runtime animasi             | `ACCEPTED`               |
-| 2026-08-12 | Hanya ikon aktif yang offside                                      | Hierarki jelas tanpa membuat lima elemen saling bersaing          | `ACCEPTED`               |
-| 2026-08-12 | `viewportFit: cover` bersifat conditional                          | Dapat mengubah safe-area seluruh aplikasi                         | `ACCEPTED`               |
-| 2026-08-12 | Skeleton avatar memakai lifecycle lokal dan tanpa artificial delay | Cache hit tidak boleh diperlambat dan layout tidak boleh bergeser | `IMPLEMENTED`            |
-| 2026-08-12 | Error API diberi `private, no-store`                               | Error auth/path tidak boleh disimpan oleh cache browser/proxy     | `IMPLEMENTED`            |
-| 2026-08-12 | Playwright memakai project WebKit mobile                           | Engine WebKit perlu masuk regression matrix CI                    | `IMPLEMENTED_PENDING_CI` |
+| Tanggal    | Keputusan                                                          | Alasan                                                               | Status                               |
+| ---------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------ |
+| 2026-08-12 | Ukur Safari sebelum mengubah cache header                          | Network refetch dan decode remount memerlukan solusi berbeda         | `ACCEPTED`                           |
+| 2026-08-12 | Skeleton tidak memiliki minimum display duration                   | Cache hit tidak boleh diperlambat demi menampilkan skeleton          | `ACCEPTED`                           |
+| 2026-08-12 | Pertahankan private proxy dan Service Worker public-only           | Auth revocation lebih penting daripada cache lintas session          | `ACCEPTED`                           |
+| 2026-08-12 | Pertahankan `Vary: Cookie` sampai ada bukti dan security review    | Menghindari pelemahan cache partition tanpa threat model             | `ACCEPTED`                           |
+| 2026-08-12 | Gunakan CSS transition untuk bottom nav                            | Perubahan sederhana tidak membutuhkan runtime animasi                | `ACCEPTED`                           |
+| 2026-08-12 | Hanya ikon aktif yang offside                                      | Hierarki jelas tanpa membuat lima elemen saling bersaing             | `ACCEPTED`                           |
+| 2026-08-12 | `viewportFit: cover` bersifat conditional                          | Dapat mengubah safe-area seluruh aplikasi                            | `ACCEPTED`                           |
+| 2026-08-12 | Skeleton avatar memakai lifecycle lokal dan tanpa artificial delay | Cache hit tidak boleh diperlambat dan layout tidak boleh bergeser    | `IMPLEMENTED`                        |
+| 2026-08-12 | Error API diberi `private, no-store`                               | Error auth/path tidak boleh disimpan oleh cache browser/proxy        | `IMPLEMENTED`                        |
+| 2026-08-12 | Playwright memakai project WebKit mobile                           | Engine WebKit perlu masuk regression matrix CI                       | `IMPLEMENTED_PENDING_CI`             |
+| 2026-08-12 | Push production dilakukan setelah automated gates                  | User meminta deploy langsung; physical Safari tetap harus divalidasi | `DEPLOYED_PENDING_DEVICE_VALIDATION` |
 
 ## 24. Handoff Awal
 
@@ -656,3 +657,4 @@ production tidak boleh dianggap sebagai bukti bahwa physical device gate sudah l
 | ----- | ---------- | ----- | ----------------------------------------------------------------------------------- |
 | 1.0.0 | 2026-08-12 | Codex | Audit avatar Safari, private cache, bottom nav, dan roadmap awal                    |
 | 1.1.0 | 2026-08-12 | Codex | Implementasi skeleton, ETag/304, bottom nav, WebKit test project, dan evidence awal |
+| 1.2.0 | 2026-08-12 | Codex | Catat commit production, deployment response, dan status device gate                |
