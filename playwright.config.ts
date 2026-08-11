@@ -20,5 +20,9 @@ export default defineConfig({
       name: 'mobile',
       use: { ...devices['Pixel 7'] },
     },
+    {
+      name: 'webkit-mobile',
+      use: { ...devices['iPhone 13'] },
+    },
   ],
 });

@@ -130,4 +130,36 @@ test.describe('responsive primary navigation', () => {
     await page.goto('/menu');
     await expect(page.locator('main[data-page-content] a[href="/mentoring"]')).toHaveCount(0);
   });
+
+  test('keeps mobile navigation targets stable and lifts the active icon', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto('/dashboard');
+
+    const mobileNav = page.getByRole('navigation', { name: 'Navigasi utama mobile' });
+    await expect(mobileNav).toBeVisible();
+
+    const activeLink = mobileNav.locator('a[aria-current="page"]');
+    await expect(activeLink).toHaveCount(1);
+    const activeIcon = activeLink.locator('[data-mobile-nav-icon]');
+    const activeBox = await activeIcon.boundingBox();
+    expect(activeBox?.width).toBeGreaterThanOrEqual(44);
+    expect(activeBox?.height).toBeGreaterThanOrEqual(44);
+
+    const inactiveIcon = mobileNav.locator('[data-mobile-nav-icon][data-active="false"]').first();
+    if (await inactiveIcon.count()) {
+      const inactiveBox = await inactiveIcon.boundingBox();
+      expect(activeBox?.y).toBeLessThan(inactiveBox?.y ?? Number.POSITIVE_INFINITY);
+    }
+
+    const navBox = await mobileNav.boundingBox();
+    expect(navBox?.height).toBeGreaterThanOrEqual(72);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth
+      )
+    ).toBe(true);
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(activeIcon).toHaveAttribute('data-active', 'true');
+  });
 });

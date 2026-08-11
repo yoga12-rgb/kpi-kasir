@@ -22,7 +22,14 @@ function errorResponse(
 ) {
   return NextResponse.json(
     { error: { code, message, requestId: id } },
-    { status, headers: { 'x-request-id': id, ...extraHeaders } }
+    {
+      status,
+      headers: {
+        'Cache-Control': 'private, no-store',
+        'x-request-id': id,
+        ...extraHeaders,
+      },
+    }
   );
 }
 
@@ -62,7 +69,10 @@ async function normalizeResponse(response: Response, id: string) {
     });
   }
 
-  const payload = await response.clone().json().catch(() => null);
+  const payload = await response
+    .clone()
+    .json()
+    .catch(() => null);
   if (!payload || typeof payload !== 'object' || !('error' in payload)) {
     return new Response(response.body, {
       status: response.status,

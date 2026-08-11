@@ -5,6 +5,8 @@
 :root {
   --color-primary: #eab308;
   --color-surface: #0b0f14;
+  --mobile-nav-height: 4.75rem;
+  --mobile-nav-lift: 0.75rem;
 }
 
 html,

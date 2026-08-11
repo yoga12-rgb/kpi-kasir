@@ -135,17 +135,17 @@ export function AppShellClient({
 
         <main
           data-page-content
-          className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8"
+          className="min-w-0 flex-1 pb-[calc(var(--mobile-nav-height)+var(--mobile-nav-lift)+env(safe-area-inset-bottom))] md:pb-8"
         >
           {children}
         </main>
 
         <nav
           aria-label="Navigasi utama mobile"
-          className="fixed inset-x-0 bottom-0 z-40 mx-auto border-t border-surface-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 mx-auto overflow-visible border-t border-surface-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
         >
           <div
-            className="grid min-h-16"
+            className="grid min-h-[var(--mobile-nav-height)]"
             style={{ gridTemplateColumns: `repeat(${visibleNavItems.length}, minmax(0, 1fr))` }}
           >
             {visibleNavItems.map((item) => {
@@ -159,18 +159,24 @@ export function AppShellClient({
                   aria-current={active ? 'page' : undefined}
                   aria-label={item.label}
                   className={cn(
-                    'flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500',
+                    'flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-xs font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 motion-reduce:transition-none',
                     active
                       ? 'font-semibold text-primary-600'
                       : 'text-surface-500 hover:text-surface-900'
                   )}
                 >
-                  <Icon
+                  <span
+                    data-mobile-nav-icon
+                    data-active={active ? 'true' : 'false'}
                     className={cn(
-                      'h-5 w-5 shrink-0',
-                      active ? 'text-primary-600' : 'text-surface-500'
+                      'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-[background-color,color,box-shadow,transform] duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none',
+                      active
+                        ? '-translate-y-3 border border-primary-400/60 bg-primary-500 text-surface-900 shadow-[0_6px_16px_rgb(234_179_8_/_30%)]'
+                        : 'text-surface-500 hover:bg-surface-100 hover:text-surface-900'
                     )}
-                  />
+                  >
+                    <Icon className="h-6 w-6" aria-hidden="true" />
+                  </span>
                   <span className="max-w-full whitespace-nowrap text-center leading-tight">
                     {item.mobileLabel ?? item.label}
                   </span>
