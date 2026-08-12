@@ -21,6 +21,19 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.2',
+    date: '2026-08-12',
+    title: 'Penyederhanaan login',
+    summary: 'Login kembali menggunakan email dan password sampai Google OAuth siap digunakan.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: ['Menghapus tombol login dan pendaftaran dengan Google dari UI.'],
+      },
+    ],
+  },
+  {
     version: '0.2.1',
     date: '2026-08-12',
     title: 'Penyederhanaan navigasi update',

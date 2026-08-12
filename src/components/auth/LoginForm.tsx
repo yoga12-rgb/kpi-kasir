@@ -33,24 +33,6 @@ function LoginFormInner() {
     router.push('/dashboard');
   }
 
-  async function handleGoogleLogin() {
-    setLoading(true);
-    setToast(null);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      setToast({ message: getErrorMessage(error), variant: 'error' });
-      setLoading(false);
-    }
-  }
-
   const error = searchParams.get('error');
   const showInactive = error === 'inactive';
 
@@ -90,22 +72,6 @@ function LoginFormInner() {
           {loading ? 'Memproses...' : 'Masuk'}
         </Button>
       </form>
-
-      <div className="my-4 flex items-center gap-3 text-xs text-surface-400">
-        <div className="h-px flex-1 bg-surface-200" />
-        atau
-        <div className="h-px flex-1 bg-surface-200" />
-      </div>
-
-      <Button
-        type="button"
-        variant="secondary"
-        fullWidth
-        onClick={handleGoogleLogin}
-        disabled={loading}
-      >
-        Lanjut dengan Google
-      </Button>
 
       <Toast
         open={!!toast}

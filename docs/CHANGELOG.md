@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2] - 2026-08-12
+
+### Changed
+
+- Menonaktifkan tombol login dan pendaftaran dengan Google sampai provider OAuth dikonfigurasi.
+- Alur login dan pendaftaran kembali menggunakan email dan password.
+
 ## [0.2.1] - 2026-08-12
 
 ### Changed

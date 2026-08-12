@@ -12,13 +12,10 @@ export const metadata: Metadata = {
 
 export default async function InvitePage({
   params,
-  searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams?: Promise<{ error?: string }>;
 }) {
   const { token } = await params;
-  const query = searchParams ? await searchParams : {};
   const invite = await getInviteByToken(token);
 
   if (!invite) {
@@ -51,7 +48,6 @@ export default async function InvitePage({
         inviteName={invite.invite_name}
         role={invite.role}
         branchNames={branchNames}
-        initialError={query.error === 'google_failed' ? 'Pendaftaran dengan Google gagal. Silakan coba lagi.' : null}
       />
 
       <p className="mt-8 text-center text-xs text-surface-400">
