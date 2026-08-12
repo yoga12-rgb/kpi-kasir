@@ -134,7 +134,7 @@ export function SetupWizard() {
         <>
           <h2 className="mb-1 text-lg font-semibold text-surface-900">Struktur Perusahaan</h2>
           <p className="mb-6 text-sm text-surface-500">
-            Setelah masuk, administrator dapat membuat Cabang, Outlet, Kategori & Detail Penilaian
+            Setelah masuk, administrator dapat membuat Cabang, Outlet, Indikator & Detail Penilaian
             melalui menu pengaturan.
           </p>
           <div className="space-y-2.5 rounded-xl bg-primary-50 p-4 text-sm text-primary-800">

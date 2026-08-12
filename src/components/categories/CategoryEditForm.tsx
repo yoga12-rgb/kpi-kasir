@@ -53,7 +53,7 @@ export function CategoryEditForm({
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(getErrorMessage(data.error, 'Gagal memperbarui kategori'));
+        setError(getErrorMessage(data.error, 'Gagal memperbarui indikator'));
         return;
       }
 
@@ -68,7 +68,7 @@ export function CategoryEditForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-surface-200 bg-white p-4">
       <Input
-        label="Nama Kategori"
+        label="Nama Indikator"
         value={name}
         onChange={(event) => setName(event.target.value)}
         required
@@ -92,7 +92,7 @@ export function CategoryEditForm({
       </p>
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" fullWidth disabled={loading || exceedsLimit}>
-        {loading ? 'Menyimpan...' : 'Simpan Kategori'}
+        {loading ? 'Menyimpan...' : 'Simpan Indikator'}
       </Button>
     </form>
   );

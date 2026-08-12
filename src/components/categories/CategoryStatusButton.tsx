@@ -41,7 +41,7 @@ export function CategoryStatusButton({
       const data = (await response.json().catch(() => null)) as { error?: unknown } | null;
 
       if (!response.ok) {
-        setError(getErrorMessage(data?.error, `Gagal ${actionLabel.toLowerCase()} kategori`));
+        setError(getErrorMessage(data?.error, `Gagal ${actionLabel.toLowerCase()} indikator`));
         return;
       }
 
@@ -68,7 +68,7 @@ export function CategoryStatusButton({
         className="flex h-9 w-9 items-center justify-center rounded-lg border border-surface-200 text-surface-500 transition-colors hover:border-primary-500 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
         onClick={openDialog}
         aria-haspopup="dialog"
-        aria-label={`${actionLabel} kategori ${categoryName}`}
+        aria-label={`${actionLabel} indikator ${categoryName}`}
         title={actionLabel}
       >
         <Icon className="h-4 w-4" aria-hidden="true" />
@@ -77,11 +77,11 @@ export function CategoryStatusButton({
       <Modal
         open={open}
         onClose={() => !loading && setOpen(false)}
-        title={`${actionLabel} kategori?`}
+        title={`${actionLabel} indikator?`}
       >
         <div className="space-y-3 text-sm text-surface-600">
           <p>
-            Kategori <strong className="font-semibold text-surface-900">{categoryName}</strong> akan
+            Indikator <strong className="font-semibold text-surface-900">{categoryName}</strong> akan
             menjadi {isActive ? 'arsip' : 'aktif'}.
           </p>
           <p>

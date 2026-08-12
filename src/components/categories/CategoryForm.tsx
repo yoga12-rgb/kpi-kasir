@@ -58,7 +58,7 @@ export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-surface-200 bg-white p-4">
       <Input
-        label="Nama Kategori"
+        label="Nama Indikator"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Contoh: Pelayanan"
@@ -90,7 +90,7 @@ export function CategoryForm({ activeWeightTotal }: CategoryFormProps) {
       </p>
       {error && <p className="text-sm text-danger-600">{error}</p>}
       <Button type="submit" fullWidth disabled={loading || exceedsLimit}>
-        {loading ? 'Menyimpan...' : 'Tambah Kategori'}
+        {loading ? 'Menyimpan...' : 'Tambah Indikator'}
       </Button>
     </form>
   );

@@ -61,7 +61,7 @@ export default async function CategoryDetailPage({
         className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span>Kategori</span>
+        <span>Indikator</span>
       </NavigationLink>
 
       <div className="mt-2 flex items-center justify-between gap-3">
@@ -140,7 +140,7 @@ export default async function CategoryDetailPage({
       </div>
 
       <div className="mt-6">
-        <h2 className="mb-3 text-lg font-semibold text-surface-900">Konfigurasi Kategori</h2>
+        <h2 className="mb-3 text-lg font-semibold text-surface-900">Konfigurasi Indikator</h2>
         {category.is_active ? (
           <CategoryEditForm
             categoryId={category.id}
@@ -151,7 +151,7 @@ export default async function CategoryDetailPage({
         ) : (
           <Card>
             <p className="text-sm text-surface-500">
-              Kategori arsip bersifat read-only. Pulihkan kategori untuk mengubah konfigurasi.
+              Indikator arsip bersifat read-only. Pulihkan indikator untuk mengubah konfigurasi.
             </p>
           </Card>
         )}

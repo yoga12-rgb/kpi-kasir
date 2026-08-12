@@ -132,7 +132,7 @@ export default async function CashierAssessmentPage({
 
   const formCategories: CategoryWithDetails[] = (categorySnapshots ?? []).map((cat) => ({
     id: cat.category_id,
-    name: cat.category_name ?? 'Kategori',
+    name: cat.category_name ?? 'Indikator',
     weight: Number(cat.weight),
     details: (detailsByCategory.get(cat.category_id) ?? []).flatMap((d) => {
       if (d.detail_type !== 'scale' && d.detail_type !== 'deduction') return [];

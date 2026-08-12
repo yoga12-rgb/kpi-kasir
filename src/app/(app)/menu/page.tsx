@@ -41,7 +41,7 @@ export default async function MenuPage() {
       ? ([
           {
             href: '/settings/categories',
-            label: 'Kategori Penilaian',
+            label: 'Indikator Penilaian',
             desc: 'Bobot & detail penilaian',
             icon: Sliders,
             color: 'text-purple-600 bg-purple-50',

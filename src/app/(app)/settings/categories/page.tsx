@@ -31,7 +31,7 @@ export default async function CategoriesPage({
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold text-surface-900">Kategori Penilaian</h1>
+      <h1 className="text-xl font-bold text-surface-900">Indikator Penilaian</h1>
       <p className="mt-0.5 text-sm text-surface-500">Konfigurasi bobot & detail penilaian</p>
 
       <div className="mt-4 grid grid-cols-2 gap-1 rounded-xl border border-surface-200 bg-surface-100 p-1">
@@ -107,15 +107,15 @@ export default async function CategoriesPage({
         {(categories ?? []).length === 0 && (
           <p className="py-6 text-center text-sm text-surface-500">
             {status === 'active'
-              ? 'Belum ada kategori aktif. Tambahkan kategori pertama.'
-              : 'Belum ada kategori yang diarsipkan.'}
+              ? 'Belum ada indikator aktif. Tambahkan indikator pertama.'
+              : 'Belum ada indikator yang diarsipkan.'}
           </p>
         )}
       </div>
 
       {status === 'active' && (
         <div className="mt-6">
-          <h2 className="mb-3 text-lg font-semibold text-surface-900">Tambah Kategori</h2>
+          <h2 className="mb-3 text-lg font-semibold text-surface-900">Tambah Indikator</h2>
           <CategoryForm activeWeightTotal={total} />
         </div>
       )}
