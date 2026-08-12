@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -34,18 +33,6 @@ export default async function LoginPage() {
       </div>
 
       <LoginForm />
-
-      <p className="mt-8 text-center text-xs text-surface-400">
-        Dibuat oleh{' '}
-        <Link
-          href="https://www.instagram.com/mang.agooy/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary-600 hover:underline"
-        >
-          Yoga Sptriana
-        </Link>
-      </p>
     </div>
   );
 }
