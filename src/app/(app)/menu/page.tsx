@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Calendar,
   Info,
-  RefreshCw,
   ChevronRight,
 } from 'lucide-react';
 import { LogoutButton } from '@/components/auth/LogoutButton';
@@ -62,13 +61,6 @@ export default async function MenuPage() {
           },
         ] as const)
       : []),
-    {
-      href: '/updates',
-      label: 'Update Aplikasi',
-      desc: 'Fitur baru dan perbaikan terbaru',
-      icon: RefreshCw,
-      color: 'text-amber-600 bg-amber-50',
-    },
     {
       href: '/about',
       label: 'About',

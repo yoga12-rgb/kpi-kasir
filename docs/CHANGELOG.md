@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2026-08-12
+
+### Changed
+
+- Memusatkan akses Update Aplikasi melalui halaman About agar tidak tampil ganda di Menu.
+
 ## [0.2.0] - 2026-08-12
 
 ### Added

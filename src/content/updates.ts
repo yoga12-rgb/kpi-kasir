@@ -21,6 +21,19 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.1',
+    date: '2026-08-12',
+    title: 'Penyederhanaan navigasi update',
+    summary: 'Akses Update Aplikasi kini dipusatkan melalui halaman About agar navigasi tidak ganda.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: ['Menghapus duplikasi menu Update Aplikasi dari halaman Lainnya.'],
+      },
+    ],
+  },
+  {
     version: '0.2.0',
     date: '2026-08-12',
     title: 'Navigasi dan transparansi update',
