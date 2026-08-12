@@ -4,6 +4,8 @@ import { Check, Pencil, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function CashierNameEditForm({
@@ -16,6 +18,7 @@ export function CashierNameEditForm({
   canEdit: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [loading, setLoading] = useState(false);
@@ -55,6 +58,10 @@ export function CashierNameEditForm({
 
       setValue(nextName);
       setEditing(false);
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

@@ -11,6 +11,8 @@ import {
   type MentoringEvidenceDraft,
 } from '@/components/mentoring/MentoringEvidencePicker';
 import { getErrorMessage } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 
 export interface OutletOption {
   id: string;
@@ -28,6 +30,7 @@ export function MentoringForm({
   evidenceUploadEnabled?: boolean;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [outletId, setOutletId] = useState('');
   const [visitedDate, setVisitedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [noteOutlet, setNoteOutlet] = useState('');
@@ -135,6 +138,10 @@ export function MentoringForm({
 
       setUploadFailures([]);
       setToast({ message: 'Sesi pendampingan tersimpan', variant: 'success' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.mentoringSessionsRoot,
+        appQueryKeys.cashierTabsRoot,
+      ]);
       router.push(`/mentoring/${sessionId}`);
       router.refresh();
     } catch (err) {

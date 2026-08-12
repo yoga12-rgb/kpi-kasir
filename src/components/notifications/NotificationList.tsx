@@ -1,7 +1,13 @@
 'use client';
 
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -14,6 +20,8 @@ import {
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { EmptyState, ListSkeleton } from '@/components/ui/Feedback';
+import { appQueryKeys } from '@/lib/client/query-keys';
+import { markNotificationReadInPages } from '@/lib/client/notification-cache';
 import { formatDateTime } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
@@ -123,107 +131,137 @@ async function readPage(cursor: string | null, signal?: AbortSignal): Promise<No
 
 export function NotificationList() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const queryClient = useQueryClient();
   const [actionId, setActionId] = useState<string | null>(null);
-  const [markingAll, setMarkingAll] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  function updateUnreadCount(count: number) {
-    const safeCount = Math.max(0, count);
-    setUnreadCount(safeCount);
-    publishUnreadCount(safeCount);
-  }
-
-  const loadInitial = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const page = await readPage(null, signal);
-      if (signal?.aborted) return;
-      setNotifications(page.notifications);
-      setNextCursor(page.nextCursor);
-      setHasMore(page.hasMore);
-      updateUnreadCount(page.unreadCount);
-    } catch (caught) {
-      if (caught instanceof Error && caught.name === 'AbortError') return;
-      setError(caught instanceof Error ? caught.message : 'Gagal memuat notifikasi');
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
+  const notificationsQuery = useInfiniteQuery<NotificationPage, Error>({
+    queryKey: appQueryKeys.notifications,
+    queryFn: ({ pageParam, signal }) => readPage(pageParam as string | null, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    staleTime: 15_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  const notifications = useMemo(() => {
+    const seen = new Set<string>();
+    return (notificationsQuery.data?.pages.flatMap((page) => page.notifications) ?? []).filter(
+      (notification) => {
+        if (seen.has(notification.id)) return false;
+        seen.add(notification.id);
+        return true;
+      }
+    );
+  }, [notificationsQuery.data]);
+  const unreadCount = notificationsQuery.data?.pages[0]?.unreadCount ?? 0;
+  const loading = notificationsQuery.isPending;
+  const loadingMore = notificationsQuery.isFetchingNextPage;
+  const hasMore = notificationsQuery.hasNextPage ?? false;
+  const queryError = notificationsQuery.error?.message ?? null;
+  const error = actionError ?? (notifications.length === 0 ? queryError : null);
+  const loadMoreError = notificationsQuery.isFetchNextPageError ? queryError : null;
 
   useEffect(() => {
-    const controller = new AbortController();
-    void loadInitial(controller.signal);
-    return () => controller.abort();
-  }, [loadInitial]);
+    publishUnreadCount(unreadCount);
+  }, [unreadCount]);
 
-  async function loadMore() {
-    if (!nextCursor || loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    setLoadMoreError(null);
-    try {
-      const page = await readPage(nextCursor);
-      setNotifications((current) => [...current, ...page.notifications]);
-      setNextCursor(page.nextCursor);
-      setHasMore(page.hasMore);
-      updateUnreadCount(page.unreadCount);
-    } catch (caught) {
-      setLoadMoreError(caught instanceof Error ? caught.message : 'Gagal memuat lebih banyak');
-    } finally {
-      setLoadingMore(false);
-    }
+  type NotificationQueryData = InfiniteData<NotificationPage, string | null>;
+  const markReadMutation = useMutation<void, Error, string, { previous?: NotificationQueryData }>({
+    mutationFn: async (id) => {
+      const response = await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: appQueryKeys.notifications });
+      const previous = queryClient.getQueryData<NotificationQueryData>(appQueryKeys.notifications);
+      queryClient.setQueryData<NotificationQueryData>(appQueryKeys.notifications, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: markNotificationReadInPages(current.pages, id),
+        };
+      });
+      return { previous };
+    },
+    onError: (error, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(appQueryKeys.notifications, context.previous);
+      setActionError(error.message);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: appQueryKeys.notifications, refetchType: 'none' });
+    },
+  });
+
+  const markAllMutation = useMutation<void, Error, void, { previous?: NotificationQueryData }>({
+    mutationFn: async () => {
+      const response = await fetch('/api/notifications/read-all', { method: 'POST' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: appQueryKeys.notifications });
+      const previous = queryClient.getQueryData<NotificationQueryData>(appQueryKeys.notifications);
+      queryClient.setQueryData<NotificationQueryData>(appQueryKeys.notifications, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            unreadCount: 0,
+            notifications: page.notifications.map((notification) => ({
+              ...notification,
+              is_read: true,
+            })),
+          })),
+        };
+      });
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(appQueryKeys.notifications, context.previous);
+      setActionError(error.message);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: appQueryKeys.notifications, refetchType: 'none' });
+    },
+  });
+
+  function loadMore() {
+    if (!hasMore || loadingMore) return;
+    setActionError(null);
+    void notificationsQuery.fetchNextPage();
   }
 
   async function markRead(id: string) {
-    const response = await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
-
-    setNotifications((current) =>
-      current.map((item) => (item.id === id ? { ...item, is_read: true } : item))
-    );
-    setUnreadCount((current) => {
-      const next = Math.max(0, current - 1);
-      publishUnreadCount(next);
-      return next;
-    });
+    setActionError(null);
+    await markReadMutation.mutateAsync(id);
   }
 
   async function openNotification(notification: NotificationItem) {
     setActionId(notification.id);
-    setError(null);
+    setActionError(null);
     try {
       if (!notification.is_read) await markRead(notification.id);
       const href = getNotificationHref(notification);
       if (href) router.push(href);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Gagal membuka notifikasi');
+      setActionError(caught instanceof Error ? caught.message : 'Gagal membuka notifikasi');
     } finally {
       setActionId(null);
     }
   }
 
   async function markAllRead() {
-    if (unreadCount === 0 || markingAll) return;
-    setMarkingAll(true);
-    setError(null);
+    if (unreadCount === 0 || markAllMutation.isPending) return;
+    setActionError(null);
     try {
-      const response = await fetch('/api/notifications/read-all', { method: 'POST' });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(getApiError(payload, 'Gagal menandai notifikasi'));
-      setNotifications((current) => current.map((item) => ({ ...item, is_read: true })));
-      updateUnreadCount(0);
+      await markAllMutation.mutateAsync();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Gagal menandai notifikasi');
-    } finally {
-      setMarkingAll(false);
+      setActionError(caught instanceof Error ? caught.message : 'Gagal menandai notifikasi');
     }
   }
 
@@ -233,7 +271,12 @@ export function NotificationList() {
     return (
       <div className="space-y-3 py-8 text-center">
         <p className="text-sm text-danger-600">{error}</p>
-        <Button type="button" variant="secondary" size="sm" onClick={() => void loadInitial()}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => void notificationsQuery.refetch()}
+        >
           <RefreshCw className="mr-1.5 h-4 w-4" />
           Coba lagi
         </Button>
@@ -251,11 +294,11 @@ export function NotificationList() {
           type="button"
           variant="ghost"
           size="sm"
-          disabled={unreadCount === 0 || markingAll}
+          disabled={unreadCount === 0 || markAllMutation.isPending}
           onClick={() => void markAllRead()}
           aria-label="Tandai semua notifikasi sudah dibaca"
         >
-          {markingAll ? (
+          {markAllMutation.isPending ? (
             <LoaderCircle className="mr-1.5 h-4 w-4 animate-spin" />
           ) : (
             <CheckCheck className="mr-1.5 h-4 w-4" />

@@ -7,6 +7,8 @@ import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { Badge } from '@/components/ui/Badge';
 import { Toast } from '@/components/ui/Overlay';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage, formatScore } from '@/lib/utils';
 
 export interface CategoryWithDetails {
@@ -36,6 +38,7 @@ export function AssessmentForm({
   categories: CategoryWithDetails[];
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(
     null
@@ -85,6 +88,10 @@ export function AssessmentForm({
       }
 
       setToast({ message: 'Penilaian tersimpan', variant: 'success' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.cashierTabsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });
@@ -120,6 +127,10 @@ export function AssessmentForm({
         }
 
         setToast({ message: 'Penilaian diinisialisasi', variant: 'success' });
+        void invalidateAppQueries(queryClient, [
+          appQueryKeys.leaderboardRoot,
+          appQueryKeys.cashierTabsRoot,
+        ]);
         router.refresh();
         return;
       }
@@ -139,6 +150,10 @@ export function AssessmentForm({
 
       setDeductionNotes((prev) => ({ ...prev, [detailId]: '' }));
       setToast({ message: 'Kejadian deduksi dicatat', variant: 'success' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.cashierTabsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });
@@ -161,6 +176,10 @@ export function AssessmentForm({
       }
 
       setToast({ message: 'Kejadian dihapus', variant: 'success' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.cashierTabsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });

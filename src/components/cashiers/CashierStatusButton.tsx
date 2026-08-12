@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 interface CashierStatusButtonProps {
@@ -24,6 +26,7 @@ export function CashierStatusButton({
   canManageStatus,
 }: CashierStatusButtonProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +65,11 @@ export function CashierStatusButton({
 
       setOpen(false);
       setReason('');
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.cashierTabsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

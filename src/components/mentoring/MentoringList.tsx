@@ -1,5 +1,6 @@
 'use client';
 
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronRight, Filter, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
+import { appQueryKeys } from '@/lib/client/query-keys';
 import { formatDate } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -99,15 +101,7 @@ export function MentoringList({
   outlets: OutletOption[];
 }) {
   const [filters, setFilters] = useState<Filters>({ branchId: '', outletId: '', from: '', to: '' });
-  const [sessions, setSessions] = useState<MentoringSessionItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadMoreControllerRef = useRef<AbortController | null>(null);
 
   const visibleOutlets = useMemo(
     () =>
@@ -119,79 +113,42 @@ export function MentoringList({
 
   const dateRangeError = filters.from && filters.to && filters.from > filters.to;
 
-  useEffect(() => {
-    loadMoreControllerRef.current?.abort();
-    loadMoreControllerRef.current = null;
-    setLoadingMore(false);
+  const mentoringQuery = useInfiniteQuery<SessionsResponse, Error>({
+    queryKey: appQueryKeys.mentoringSessions(
+      filters.branchId,
+      filters.outletId,
+      filters.from,
+      filters.to
+    ),
+    queryFn: ({ pageParam, signal }) =>
+      fetchSessions(filters, pageParam as string | null, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    enabled: !dateRangeError,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const sessions = useMemo(() => {
+    const seen = new Set<string>();
+    return (mentoringQuery.data?.pages.flatMap((page) => page.sessions) ?? []).filter((session) => {
+      if (seen.has(session.id)) return false;
+      seen.add(session.id);
+      return true;
+    });
+  }, [mentoringQuery.data]);
+  const loading = !dateRangeError && mentoringQuery.isPending;
+  const loadingMore = mentoringQuery.isFetchingNextPage;
+  const error = mentoringQuery.error?.message ?? null;
+  const hasMore = !dateRangeError && (mentoringQuery.hasNextPage ?? false);
 
-    if (dateRangeError) {
-      setSessions([]);
-      setNextCursor(null);
-      setHasMore(false);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    const controller = new AbortController();
-    let active = true;
-
-    setSessions([]);
-    setNextCursor(null);
-    setHasMore(true);
-    setLoading(true);
-    setError(null);
-
-    fetchSessions(filters, null, controller.signal)
-      .then((result) => {
-        if (!active) return;
-        setSessions(result.sessions);
-        setNextCursor(result.nextCursor);
-        setHasMore(result.hasMore);
-      })
-      .catch((err: unknown) => {
-        if (!active || controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : 'Gagal memuat sesi pendampingan');
-        setHasMore(false);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-      controller.abort();
-      loadMoreControllerRef.current?.abort();
-    };
-  }, [dateRangeError, filters, retryKey]);
-
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || !hasMore || loading || loadingMore) return;
-
-    setLoadingMore(true);
-    setError(null);
-    const controller = new AbortController();
-    loadMoreControllerRef.current = controller;
-
-    try {
-      const result = await fetchSessions(filters, nextCursor, controller.signal);
-      if (controller.signal.aborted) return;
-      setSessions((current) => {
-        const existingIds = new Set(current.map((session) => session.id));
-        return [...current, ...result.sessions.filter((session) => !existingIds.has(session.id))];
-      });
-      setNextCursor(result.nextCursor);
-      setHasMore(result.hasMore);
-    } catch (err: unknown) {
-      if (controller.signal.aborted) return;
-      setError(err instanceof Error ? err.message : 'Gagal memuat sesi berikutnya');
-    } finally {
-      if (loadMoreControllerRef.current === controller) {
-        loadMoreControllerRef.current = null;
-        setLoadingMore(false);
-      }
-    }
-  }, [filters, hasMore, loading, loadingMore, nextCursor]);
+  const loadMore = useCallback(() => {
+    if (!hasMore || loading || loadingMore) return;
+    void mentoringQuery.fetchNextPage();
+  }, [hasMore, loading, loadingMore, mentoringQuery]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -213,11 +170,11 @@ export function MentoringList({
   }
 
   function retry() {
-    if (sessions.length > 0 && nextCursor) {
+    if (sessions.length > 0 && mentoringQuery.hasNextPage) {
       void loadMore();
       return;
     }
-    setRetryKey((key) => key + 1);
+    void mentoringQuery.refetch();
   }
 
   return (

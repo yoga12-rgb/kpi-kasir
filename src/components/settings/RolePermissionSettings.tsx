@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Feedback';
 import { Toast } from '@/components/ui/Overlay';
+import { appQueryKeys } from '@/lib/client/query-keys';
 import {
   CONFIGURABLE_PERMISSIONS,
   PERMISSION_DETAILS,
@@ -15,6 +17,16 @@ type ConfigurableRole = 'manager' | 'supervisor';
 interface RolePermissionState {
   role: ConfigurableRole;
   permissions: Record<Permission, boolean>;
+}
+
+interface PermissionMutationVariables {
+  role: ConfigurableRole;
+  permission: Permission;
+  enabled: boolean;
+}
+
+interface PermissionMutationContext {
+  previousRoles: RolePermissionState[] | undefined;
 }
 
 const roleLabels: Record<ConfigurableRole, string> = {
@@ -36,53 +48,35 @@ function updateRolePermission(
 }
 
 export function RolePermissionSettings() {
-  const [roles, setRoles] = useState<RolePermissionState[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(
     null
   );
+  const queryClient = useQueryClient();
+  const rolesQuery = useQuery<RolePermissionState[], Error>({
+    queryKey: appQueryKeys.rolePermissions,
+    queryFn: async ({ signal }) => {
+      const response = await fetch('/api/role-permissions', { signal });
+      const data = (await response.json().catch(() => null)) as {
+        roles?: RolePermissionState[];
+        error?: string;
+      } | null;
+      if (!response.ok) throw new Error(data?.error ?? 'Gagal memuat hak akses role');
+      return data?.roles ?? [];
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
-  useEffect(() => {
-    let active = true;
-
-    fetch('/api/role-permissions', { cache: 'no-store' })
-      .then(async (response) => {
-        const data = (await response.json().catch(() => null)) as {
-          roles?: RolePermissionState[];
-          error?: string;
-        } | null;
-        if (!response.ok) throw new Error(data?.error ?? 'Gagal memuat hak akses role');
-        return data?.roles ?? [];
-      })
-      .then((data) => {
-        if (active) setRoles(data);
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Gagal memuat hak akses role');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  async function togglePermission(
-    role: ConfigurableRole,
-    permission: Permission,
-    enabled: boolean
-  ) {
-    const key = `${role}:${permission}`;
-    const previousRoles = roles;
-    setRoles((current) => updateRolePermission(current, role, permission, enabled));
-    setSaving(key);
-    setToast(null);
-
-    try {
+  const permissionMutation = useMutation<
+    void,
+    Error,
+    PermissionMutationVariables,
+    PermissionMutationContext
+  >({
+    mutationFn: async ({ role, permission, enabled }) => {
       const response = await fetch('/api/role-permissions', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -90,19 +84,36 @@ export function RolePermissionSettings() {
       });
       const data = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) throw new Error(data?.error ?? 'Gagal menyimpan hak akses');
+    },
+    onMutate: async ({ role, permission, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: appQueryKeys.rolePermissions });
+      const previousRoles = queryClient.getQueryData<RolePermissionState[]>(appQueryKeys.rolePermissions);
+      queryClient.setQueryData<RolePermissionState[]>(
+        appQueryKeys.rolePermissions,
+        (current) => updateRolePermission(current ?? [], role, permission, enabled)
+      );
+      setSaving(`${role}:${permission}`);
+      setToast(null);
+      return { previousRoles };
+    },
+    onSuccess: () => {
       setToast({ message: 'Hak akses diperbarui', variant: 'success' });
-    } catch (err: unknown) {
-      setRoles(previousRoles);
-      setToast({
-        message: err instanceof Error ? err.message : 'Gagal menyimpan hak akses',
-        variant: 'error',
-      });
-    } finally {
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousRoles) {
+        queryClient.setQueryData(appQueryKeys.rolePermissions, context.previousRoles);
+      }
+      setToast({ message: error.message, variant: 'error' });
+    },
+    onSettled: () => {
       setSaving(null);
-    }
-  }
+      void queryClient.invalidateQueries({ queryKey: appQueryKeys.rolePermissions });
+    },
+  });
 
-  if (loading) {
+  const roles = rolesQuery.data ?? [];
+
+  if (rolesQuery.isPending) {
     return (
       <div className="space-y-3">
         <Skeleton className="h-32 w-full" />
@@ -111,8 +122,8 @@ export function RolePermissionSettings() {
     );
   }
 
-  if (error) {
-    return <p className="text-sm text-danger-600">{error}</p>;
+  if (rolesQuery.error) {
+    return <p className="text-sm text-danger-600">{rolesQuery.error.message}</p>;
   }
 
   return (
@@ -146,7 +157,13 @@ export function RolePermissionSettings() {
                     aria-checked={enabled}
                     aria-label={`${enabled ? 'Nonaktifkan' : 'Aktifkan'} ${PERMISSION_DETAILS[permission].label} untuk ${roleLabels[role.role]}`}
                     disabled={saving !== null}
-                    onClick={() => togglePermission(role.role, permission, !enabled)}
+                    onClick={() =>
+                      permissionMutation.mutate({
+                        role: role.role,
+                        permission,
+                        enabled: !enabled,
+                      })
+                    }
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-50 disabled:cursor-wait disabled:opacity-60 ${
                       enabled ? 'bg-primary-500' : 'bg-surface-300'
                     }`}

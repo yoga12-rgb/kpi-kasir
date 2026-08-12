@@ -1,10 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Form';
 import { Toast } from '@/components/ui/Overlay';
+import { appQueryKeys } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 interface BranchOption {
@@ -13,7 +14,7 @@ interface BranchOption {
 }
 
 export function InviteForm({ branches }: { branches: BranchOption[] }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [inviteName, setInviteName] = useState('');
   const [role, setRole] = useState<'manager' | 'supervisor'>('manager');
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
@@ -53,7 +54,7 @@ export function InviteForm({ branches }: { branches: BranchOption[] }) {
       setToast({ message: 'Link undangan dibuat', variant: 'success' });
       setInviteName('');
       setSelectedBranches([]);
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: appQueryKeys.invitesRoot });
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });
     } finally {

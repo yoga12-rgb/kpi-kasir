@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 import { CashierAvatar } from './CashierAvatar';
 import { Toast } from '@/components/ui/Overlay';
 import { Modal } from '@/components/ui/Modal';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 const MAX_SOURCE_SIZE = 10 * 1024 * 1024;
@@ -76,6 +78,7 @@ export function CashierAvatarForm({
   details?: ReactNode;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(
@@ -106,6 +109,10 @@ export function CashierAvatarForm({
       }
 
       setToast({ message: 'Foto profil diperbarui', variant: 'success' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });

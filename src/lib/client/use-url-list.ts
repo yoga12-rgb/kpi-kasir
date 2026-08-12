@@ -1,7 +1,9 @@
 'use client';
 
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { appQueryKeys } from '@/lib/client/query-keys';
 
 export interface PagedResult<T> {
   items: T[];
@@ -29,65 +31,59 @@ function toPath(pathname: string, params: URLSearchParams) {
 export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlListOptions<T>) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams]);
-  const currentKey = useMemo(() => getUrlKey(currentParams, queryKeys), [currentParams, queryKeys]);
-  const [result, setResult] = useState(initialResult);
-  const [draftQuery, setDraftQuery] = useState(currentParams.get('q') ?? '');
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const controllerRef = useRef<AbortController | null>(null);
-  const mountedRef = useRef(true);
-  const lastLoadedKeyRef = useRef(currentKey);
-  const initialDataSignature = useMemo(() => JSON.stringify(initialResult), [initialResult]);
-
-  const load = useCallback(
-    async (params: URLSearchParams, key: string) => {
-      controllerRef.current?.abort();
-      const controller = new AbortController();
-      controllerRef.current = controller;
-      setIsPending(true);
-      setError(null);
-
-      try {
-        const nextResult = await fetchPage(params, controller.signal);
-        if (!mountedRef.current || controller.signal.aborted) return;
-        const liveParams = new URLSearchParams(window.location.search);
-        if (getUrlKey(liveParams, queryKeys) !== key) return;
-        setResult(nextResult);
-      } catch (reason: unknown) {
-        if (!mountedRef.current || controller.signal.aborted) return;
-        setError(reason instanceof Error ? reason.message : 'Gagal memuat data');
-      } finally {
-        if (mountedRef.current && controllerRef.current === controller) {
-          controllerRef.current = null;
-          setIsPending(false);
-        }
-      }
-    },
-    [fetchPage, queryKeys]
+  const routerQueryString = searchParams.toString();
+  const [localQueryString, setLocalQueryString] = useState(routerQueryString);
+  const queryClient = useQueryClient();
+  const [initialKey] = useState(() =>
+    getUrlKey(new URLSearchParams(routerQueryString), queryKeys)
+  );
+  const initialSignature = useMemo(() => JSON.stringify(initialResult), [initialResult]);
+  const lastInitialSignatureRef = useRef(initialSignature);
+  const currentParams = useMemo(
+    () => new URLSearchParams(localQueryString),
+    [localQueryString]
+  );
+  const currentKey = useMemo(
+    () => getUrlKey(currentParams, queryKeys),
+    [currentParams, queryKeys]
+  );
+  const queryKey = useMemo(
+    () =>
+      appQueryKeys.urlList(
+        pathname,
+        queryKeys.map((key) => `${key}=${currentParams.get(key) ?? ''}`)
+      ),
+    [currentParams, pathname, queryKeys]
   );
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      controllerRef.current?.abort();
-    };
-  }, []);
+    setLocalQueryString(routerQueryString);
+  }, [routerQueryString]);
+
+  const query = useQuery<PagedResult<T>, Error>({
+    queryKey,
+    queryFn: ({ signal }) => fetchPage(new URLSearchParams(currentParams.toString()), signal),
+    initialData: currentKey === initialKey ? initialResult : undefined,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (lastInitialSignatureRef.current === initialSignature) return;
+    lastInitialSignatureRef.current = initialSignature;
+    if (currentKey === initialKey) {
+      queryClient.setQueryData(queryKey, initialResult);
+    }
+  }, [currentKey, initialKey, initialResult, initialSignature, queryClient, queryKey]);
+
+  const [draftQuery, setDraftQuery] = useState(currentParams.get('q') ?? '');
 
   useEffect(() => {
     setDraftQuery(currentParams.get('q') ?? '');
-    if (currentKey === lastLoadedKeyRef.current) return;
-    lastLoadedKeyRef.current = currentKey;
-    void load(currentParams, currentKey);
-  }, [currentKey, currentParams, load]);
-
-  // Mutation forms may refresh the server props while the URL stays unchanged.
-  useEffect(() => {
-    if (!isPending) setResult(initialResult);
-    // The signature prevents this from replacing client-fetched rows on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialDataSignature]);
+  }, [currentParams]);
 
   const updateUrl = useCallback(
     (updates: Record<string, string | null>, mode: 'replace' | 'push') => {
@@ -99,16 +95,15 @@ export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlLis
       const nextKey = getUrlKey(nextParams, queryKeys);
       if (nextKey === currentKey) return;
 
-      lastLoadedKeyRef.current = nextKey;
       const nextPath = toPath(pathname, nextParams);
       if (mode === 'replace') {
         window.history.replaceState(null, '', nextPath);
       } else {
         window.history.pushState(null, '', nextPath);
       }
-      void load(nextParams, nextKey);
+      setLocalQueryString(nextParams.toString());
     },
-    [currentKey, currentParams, load, pathname, queryKeys]
+    [currentKey, currentParams, pathname, queryKeys]
   );
 
   const submitSearch = useCallback(
@@ -132,19 +127,18 @@ export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlLis
   );
 
   const retry = useCallback(() => {
-    lastLoadedKeyRef.current = '';
-    void load(currentParams, currentKey);
-  }, [currentKey, currentParams, load]);
+    void query.refetch();
+  }, [query]);
 
   return {
-    result,
+    result: query.data ?? initialResult,
     draftQuery,
     setDraftQuery,
     submitSearch,
     goToPage,
     replaceParams,
-    isPending,
-    error,
+    isPending: query.isFetching,
+    error: query.error?.message ?? null,
     retry,
   };
 }

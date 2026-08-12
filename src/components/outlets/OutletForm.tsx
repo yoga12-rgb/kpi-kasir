@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function OutletForm({ branchId }: { branchId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +34,11 @@ export function OutletForm({ branchId }: { branchId: string }) {
       }
 
       setName('');
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.mentoringSessionsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

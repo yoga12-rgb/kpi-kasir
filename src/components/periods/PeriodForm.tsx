@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage, periodStartDate, periodEndDate } from '@/lib/utils';
 
 export function PeriodForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [month, setMonth] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +38,7 @@ export function PeriodForm() {
       }
 
       setMonth('');
+      void invalidateAppQueries(queryClient, [appQueryKeys.leaderboardRoot]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

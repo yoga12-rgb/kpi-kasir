@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Input } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 interface Preflight {
@@ -23,6 +25,7 @@ interface Preflight {
 
 export function ClosePeriodButton({ periodId }: { periodId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingPreflight, setLoadingPreflight] = useState(false);
@@ -79,6 +82,7 @@ export function ClosePeriodButton({ periodId }: { periodId: string }) {
       }
 
       setOpen(false);
+      void invalidateAppQueries(queryClient, [appQueryKeys.leaderboardRoot]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

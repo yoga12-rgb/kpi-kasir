@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function BranchForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,6 +35,12 @@ export function BranchForm() {
         return;
       }
 
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.inviteBranches,
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.mentoringSessionsRoot,
+      ]);
       router.push(`/branches/${data.branch.id}`);
       router.refresh();
     } catch (err) {

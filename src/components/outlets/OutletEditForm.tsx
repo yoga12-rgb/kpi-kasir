@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function OutletEditForm({
@@ -14,6 +16,7 @@ export function OutletEditForm({
   currentName: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(currentName);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -37,6 +40,11 @@ export function OutletEditForm({
       }
 
       setMessage({ type: 'success', text: 'Nama outlet berhasil diperbarui' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.mentoringSessionsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setMessage({ type: 'error', text: getErrorMessage(err) });

@@ -8,6 +8,8 @@ import {
   type MentoringEvidenceDraft,
 } from '@/components/mentoring/MentoringEvidencePicker';
 import { MAX_MENTORING_EVIDENCE_COUNT } from '@/lib/mentoring/evidence-constants';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function MentoringEvidenceUploadPanel({
@@ -18,6 +20,7 @@ export function MentoringEvidenceUploadPanel({
   sessionId: string;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<MentoringEvidenceDraft[]>([]);
   const [pickerKey, setPickerKey] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -64,6 +67,10 @@ export function MentoringEvidenceUploadPanel({
 
     setDrafts([]);
     setPickerKey((current) => current + 1);
+    void invalidateAppQueries(queryClient, [
+      appQueryKeys.mentoringSessionsRoot,
+      appQueryKeys.cashierTabsRoot,
+    ]);
     router.refresh();
   }
 

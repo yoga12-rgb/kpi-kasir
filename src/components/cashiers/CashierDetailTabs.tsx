@@ -2,9 +2,11 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { ArrowLeftRight, HandHelping, History } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { appQueryKeys } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 const TransferForm = dynamic(
@@ -64,8 +66,6 @@ type TabData =
   | { tab: 'mutation'; outlets: OutletOption[] }
   | { tab: 'placement'; histories: PlacementHistory[]; statusHistories: StatusHistory[] }
   | { tab: 'mentoring'; notes: MentoringNote[] };
-
-type TabState = { data?: TabData; error?: string; loading: boolean };
 
 interface CashierDetailTabsProps {
   cashierId: string;
@@ -227,13 +227,6 @@ export function CashierDetailTabs({
   canViewStatusHistory,
 }: CashierDetailTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('placement');
-  const [tabStates, setTabStates] = useState<Record<TabId, TabState>>({
-    mutation: { loading: false },
-    placement: { loading: false },
-    mentoring: { loading: false },
-  });
-  const loadedTabs = useRef(new Set<TabId>());
-  const requestController = useRef<AbortController | null>(null);
   const tabRefs = useRef<Record<TabId, HTMLButtonElement | null>>({
     mutation: null,
     placement: null,
@@ -247,55 +240,24 @@ export function CashierDetailTabs({
     ...(canMentor ? [{ id: 'mentoring' as const, label: 'Pendampingan', icon: HandHelping }] : []),
   ];
 
-  const loadTab = useCallback(
-    async (tab: TabId, force = false) => {
-      if (!force && loadedTabs.current.has(tab)) return;
-      if (force) loadedTabs.current.delete(tab);
-
-      requestController.current?.abort();
-      const controller = new AbortController();
-      requestController.current = controller;
-      setTabStates((current) => ({
-        ...current,
-        [tab]: { ...current[tab], loading: true, error: undefined },
-      }));
-
-      try {
-        const response = await fetch(`/api/cashiers/${cashierId}/tabs?tab=${tab}`, {
-          signal: controller.signal,
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(getErrorMessage(payload?.error, 'Gagal memuat detail kasir'));
-        }
-        if (!payload || typeof payload !== 'object' || payload.tab !== tab) {
-          throw new Error('Respons detail kasir tidak valid');
-        }
-
-        loadedTabs.current.add(tab);
-        setTabStates((current) => ({
-          ...current,
-          [tab]: { data: payload as TabData, loading: false },
-        }));
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        setTabStates((current) => ({
-          ...current,
-          [tab]: {
-            ...current[tab],
-            loading: false,
-            error: getErrorMessage(error, 'Gagal memuat detail kasir'),
-          },
-        }));
+  const activeTabQuery = useQuery<TabData, Error>({
+    queryKey: appQueryKeys.cashierTabs(cashierId, activeTab),
+    queryFn: async ({ signal }) => {
+      const response = await fetch(`/api/cashiers/${cashierId}/tabs?tab=${activeTab}`, { signal });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(getErrorMessage(payload?.error, 'Gagal memuat detail kasir'));
       }
+      if (!payload || typeof payload !== 'object' || payload.tab !== activeTab) {
+        throw new Error('Respons detail kasir tidak valid');
+      }
+      return payload as TabData;
     },
-    [cashierId]
-  );
-
-  useEffect(() => {
-    void loadTab(activeTab);
-    return () => requestController.current?.abort();
-  }, [activeTab, loadTab]);
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
   useEffect(() => {
     if ((activeTab === 'mutation' && !canManageMutation) || (activeTab === 'mentoring' && !canMentor)) {
@@ -320,28 +282,27 @@ export function CashierDetailTabs({
     tabRefs.current[nextTab]?.focus();
   }
 
-  const activeState = tabStates[activeTab];
   let activeContent: ReactNode;
-  if (activeState.loading && !activeState.data) {
+  if (activeTabQuery.isPending) {
     activeContent = <TabLoading />;
-  } else if (activeState.error) {
-    activeContent = <TabError onRetry={() => void loadTab(activeTab, true)} />;
-  } else if (activeTab === 'mutation' && activeState.data?.tab === 'mutation') {
+  } else if (activeTabQuery.error) {
+    activeContent = <TabError onRetry={() => void activeTabQuery.refetch()} />;
+  } else if (activeTab === 'mutation' && activeTabQuery.data?.tab === 'mutation') {
     activeContent = (
       <section className="card mt-4">
         <h2 className="mb-3 text-base font-semibold text-surface-900">Mutasi Outlet</h2>
         <TransferForm
           cashierId={cashierId}
           currentOutletId={currentOutletId}
-          outlets={activeState.data.outlets}
+          outlets={activeTabQuery.data.outlets}
         />
       </section>
     );
-  } else if (activeTab === 'mentoring' && activeState.data?.tab === 'mentoring') {
-    activeContent = <MentoringPanel data={activeState.data} />;
-  } else if (activeState.data?.tab === 'placement') {
+  } else if (activeTab === 'mentoring' && activeTabQuery.data?.tab === 'mentoring') {
+    activeContent = <MentoringPanel data={activeTabQuery.data} />;
+  } else if (activeTabQuery.data?.tab === 'placement') {
     activeContent = (
-      <PlacementPanel data={activeState.data} canViewStatusHistory={canViewStatusHistory} />
+      <PlacementPanel data={activeTabQuery.data} canViewStatusHistory={canViewStatusHistory} />
     );
   } else {
     activeContent = <TabLoading />;
@@ -389,6 +350,7 @@ export function CashierDetailTabs({
         role="tabpanel"
         aria-labelledby={`cashier-tab-${activeTab}`}
         tabIndex={0}
+        aria-busy={activeTabQuery.isFetching}
       >
         {activeContent}
       </div>

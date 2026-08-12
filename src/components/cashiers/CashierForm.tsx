@@ -4,10 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function CashierForm({ outletId }: { outletId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [employmentStartDate, setEmploymentStartDate] = useState(() => {
     const today = new Date();
@@ -43,6 +46,10 @@ export function CashierForm({ outletId }: { outletId: string }) {
         const day = String(today.getDate()).padStart(2, '0');
         return `${today.getFullYear()}-${month}-${day}`;
       });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.leaderboardRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

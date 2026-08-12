@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Select } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 interface OutletOption {
@@ -13,6 +15,7 @@ interface OutletOption {
 
 export function TransferForm({ cashierId, currentOutletId, outlets }: { cashierId: string; currentOutletId: string; outlets: OutletOption[] }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [outletId, setOutletId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +41,11 @@ export function TransferForm({ cashierId, currentOutletId, outlets }: { cashierI
         return;
       }
 
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.cashierTabsRoot,
+        appQueryKeys.leaderboardRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setError(getErrorMessage(err));

@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
+import { useQueryClient } from '@tanstack/react-query';
+import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage } from '@/lib/utils';
 
 export function BranchEditForm({
@@ -16,6 +18,7 @@ export function BranchEditForm({
   currentCode: string | null;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(currentName);
   const [code, setCode] = useState(currentCode ?? '');
   const [loading, setLoading] = useState(false);
@@ -41,6 +44,12 @@ export function BranchEditForm({
       }
 
       setMessage({ type: 'success', text: 'Data cabang berhasil diperbarui' });
+      void invalidateAppQueries(queryClient, [
+        appQueryKeys.urlLists,
+        appQueryKeys.inviteBranches,
+        appQueryKeys.leaderboardRoot,
+        appQueryKeys.mentoringSessionsRoot,
+      ]);
       router.refresh();
     } catch (err) {
       setMessage({ type: 'error', text: getErrorMessage(err) });

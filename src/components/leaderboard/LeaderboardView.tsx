@@ -1,14 +1,16 @@
 'use client';
 
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronDown, Download, Medal, RotateCcw, Trophy } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
 import { cn } from '@/lib/cn';
+import { appQueryKeys } from '@/lib/client/query-keys';
 import { formatScore } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
@@ -86,16 +88,8 @@ export function LeaderboardView({
   );
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [rows, setRows] = useState<Row[]>(() => initialResult?.rows ?? []);
-  const [nextCursor, setNextCursor] = useState<string | null>(() => initialResult?.nextCursor ?? null);
-  const [hasMore, setHasMore] = useState(() => initialResult?.hasMore ?? false);
-  const [loading, setLoading] = useState(() => !initialResult);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
-  const loadMoreControllerRef = useRef<AbortController | null>(null);
-  const initialResultRef = useRef(initialResult);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -120,7 +114,7 @@ export function LeaderboardView({
   );
 
   const fetchPage = useCallback(
-    async (cursor: string | null, signal: AbortSignal) => {
+    async ({ cursor, signal }: { cursor: string | null; signal: AbortSignal }) => {
       const params = buildParams('json');
       if (cursor) params.set('cursor', cursor);
 
@@ -145,77 +139,52 @@ export function LeaderboardView({
     [buildParams]
   );
 
-  useEffect(() => {
-    loadMoreControllerRef.current?.abort();
-    loadMoreControllerRef.current = null;
-
-    const requestKey = buildParams('json').toString();
-    if (initialResultRef.current?.requestKey === requestKey) {
-      initialResultRef.current = undefined;
-      return;
-    }
-
-    const controller = new AbortController();
-    let active = true;
-    setRows([]);
-    setNextCursor(null);
-    setHasMore(false);
-    setLoading(true);
-    setError(null);
-
-    fetchPage(null, controller.signal)
-      .then((result) => {
-        if (!active) return;
-        setRows(result.rows);
-        setNextCursor(result.nextCursor);
-        setHasMore(result.hasMore);
-      })
-      .catch((reason: unknown) => {
-        if (!active || controller.signal.aborted) return;
-        setError(reason instanceof Error ? reason.message : 'Gagal memuat leaderboard');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-      controller.abort();
-      loadMoreControllerRef.current?.abort();
+  const requestKey = buildParams('json').toString();
+  const initialPage = useMemo<LeaderboardResponse | undefined>(() => {
+    if (!initialResult || initialResult.requestKey !== requestKey) return undefined;
+    return {
+      rows: initialResult.rows,
+      nextCursor: initialResult.nextCursor,
+      hasMore: initialResult.hasMore,
     };
-  }, [buildParams, fetchPage, retryKey]);
+  }, [initialResult, requestKey]);
+  const leaderboardQuery = useInfiniteQuery<LeaderboardResponse, Error>({
+    queryKey: appQueryKeys.leaderboard(level, mode, periodId, branchId, outletId, search),
+    queryFn: ({ pageParam, signal }) =>
+      fetchPage({ cursor: pageParam as string | null, signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
+    initialData: initialPage
+      ? { pages: [initialPage], pageParams: [null] }
+      : undefined,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    return (leaderboardQuery.data?.pages.flatMap((page) => page.rows) ?? []).filter((row) => {
+      if (seen.has(row.cashier_id)) return false;
+      seen.add(row.cashier_id);
+      return true;
+    });
+  }, [leaderboardQuery.data]);
+  const loading = leaderboardQuery.isPending;
+  const loadingMore = leaderboardQuery.isFetchingNextPage;
+  const error = leaderboardQuery.error?.message ?? exportError;
+  const hasMore = leaderboardQuery.hasNextPage ?? false;
 
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || !hasMore || loading || loadingMore) return;
-
-    const controller = new AbortController();
-    loadMoreControllerRef.current = controller;
-    setLoadingMore(true);
-    setError(null);
-
-    try {
-      const result = await fetchPage(nextCursor, controller.signal);
-      if (controller.signal.aborted) return;
-      setRows((current) => {
-        const existingIds = new Set(current.map((row) => row.cashier_id));
-        return [...current, ...result.rows.filter((row) => !existingIds.has(row.cashier_id))];
-      });
-      setNextCursor(result.nextCursor);
-      setHasMore(result.hasMore);
-    } catch (reason: unknown) {
-      if (controller.signal.aborted) return;
-      setError(reason instanceof Error ? reason.message : 'Gagal memuat halaman berikutnya');
-    } finally {
-      if (loadMoreControllerRef.current === controller) {
-        loadMoreControllerRef.current = null;
-        setLoadingMore(false);
-      }
-    }
-  }, [fetchPage, hasMore, loading, loadingMore, nextCursor]);
+  const loadMore = useCallback(() => {
+    if (!hasMore || loading || loadingMore) return;
+    void leaderboardQuery.fetchNextPage();
+  }, [hasMore, leaderboardQuery, loading, loadingMore]);
 
   async function exportCsv() {
     setExporting(true);
-    setError(null);
+    setExportError(null);
     try {
       const response = await fetch(`/api/leaderboard?${buildParams('csv').toString()}`, {
         cache: 'no-store',
@@ -233,7 +202,7 @@ export function LeaderboardView({
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (reason: unknown) {
-      setError(reason instanceof Error ? reason.message : 'Gagal mengekspor leaderboard');
+      setExportError(reason instanceof Error ? reason.message : 'Gagal mengekspor leaderboard');
     } finally {
       setExporting(false);
     }
@@ -384,7 +353,12 @@ export function LeaderboardView({
       {error && (
         <div className="space-y-2 text-center">
           <p className="text-sm text-danger-600">{error}</p>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setRetryKey((key) => key + 1)}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void leaderboardQuery.refetch()}
+          >
             Coba lagi
           </Button>
         </div>

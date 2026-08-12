@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { WebVitals } from '@/components/performance/WebVitals';
+import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
 import './globals.css';
 
@@ -32,9 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id">
       <body>
-        <WebVitals />
-        <ServiceWorkerRegistration />
-        {children}
+        <QueryProvider>
+          <WebVitals />
+          <ServiceWorkerRegistration />
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );
