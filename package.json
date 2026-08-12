@@ -1,6 +1,6 @@
 {
   "name": "kpi-kasir-rajaklana",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,6 +16,7 @@
     "test:security": "node scripts/security-regression.mjs",
     "test:types": "node scripts/verify-database-types.mjs",
     "test:ops": "node scripts/ops-preflight.mjs",
+    "test:changelog": "node scripts/verify-changelog.mjs",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/types/database.ts"
   },

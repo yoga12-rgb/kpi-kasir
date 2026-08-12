@@ -107,6 +107,7 @@ test.describe('authenticated critical paths', () => {
     }
 
     await cashierLink.click();
+    await expect(page.getByRole('link', { name: 'Kembali', exact: true })).toBeVisible();
     await expect(page.getByRole('tab', { name: 'Penempatan' })).toBeVisible();
     await expect.poll(() => tabRequests.some((url) => url.includes('tab=placement'))).toBe(true);
     expect(tabRequests.some((url) => url.includes('tab=mutation'))).toBe(false);

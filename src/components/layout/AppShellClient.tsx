@@ -72,6 +72,7 @@ export function AppShellClient({
     '/notifications',
     '/settings',
     '/about',
+    '/updates',
   ];
   const isRouteOrChild = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const isActive = (href: string) =>

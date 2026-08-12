@@ -29,6 +29,7 @@ export default async function CashierDetailPage({
     searchParams,
   ]);
   const backHref = getSafeReturnTo(navigationParams?.returnTo, '/cashiers');
+  const backLabel = navigationParams?.returnTo ? 'Kembali' : 'Kasir';
   const canAssess = profile.role === 'admin' || hasPermission(permissions, 'assessment');
   const canMentor = profile.role === 'admin' || hasPermission(permissions, 'mentoring');
   const canEditCashier = profile.role === 'admin';
@@ -100,7 +101,7 @@ export default async function CashierDetailPage({
 
   return (
     <div className="p-4">
-      <BackLink href={backHref} label="Kasir" />
+      <BackLink href={backHref} label={backLabel} />
 
       <Card className="mt-4 overflow-hidden border-primary-500/20 p-0 shadow-none">
         <div className="px-5 pb-6 pt-6 text-center sm:px-8 sm:pb-7 sm:pt-7">
