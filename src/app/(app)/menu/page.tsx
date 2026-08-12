@@ -1,5 +1,4 @@
 import {
-  Trophy,
   Building2,
   Users,
   Sliders,
@@ -7,7 +6,9 @@ import {
   Calendar,
   Info,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
+import { signOutAction } from '@/app/(app)/actions';
 import { Card } from '@/components/ui/Card';
 import { NavigationLink } from '@/components/ui/NavigationLink';
 import { requireUser } from '@/lib/auth/guards';
@@ -20,14 +21,6 @@ export default async function MenuPage() {
   const permissions = await getRolePermissions(profile.role);
 
   const items = [
-    {
-      href: '/leaderboard',
-      label: 'Leaderboard',
-      desc: 'Ranking & skor kasir',
-      icon: Trophy,
-      color: 'text-amber-600 bg-amber-50',
-      permission: 'leaderboard' as Permission,
-    },
     {
       href: '/branches',
       label: 'Cabang',
@@ -104,6 +97,21 @@ export default async function MenuPage() {
           );
         })}
       </div>
+
+      <form action={signOutAction} className="mt-6">
+        <button
+          type="submit"
+          className="flex w-full items-center gap-4 rounded-lg border border-danger-500/20 bg-white p-4 text-left transition-colors hover:bg-danger-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger-500"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-danger-500/10 text-danger-600">
+            <LogOut className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium text-surface-900">Keluar</span>
+            <span className="block text-sm text-surface-500">Akhiri sesi akun ini</span>
+          </span>
+        </button>
+      </form>
     </div>
   );
 }

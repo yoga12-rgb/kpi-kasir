@@ -9,10 +9,8 @@ import {
   ClipboardList,
   Trophy,
   Menu,
-  LogOut,
   type LucideIcon,
 } from 'lucide-react';
-import { signOutAction } from '@/app/(app)/actions';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { hasPermission, type Permission } from '@/lib/auth/permissions';
 import { cn } from '@/lib/cn';
@@ -121,15 +119,6 @@ export function AppShellClient({
           <span className="hidden text-sm font-medium text-surface-500 md:block">Area kerja</span>
           <nav aria-label="Aksi akun" className="ml-auto flex items-center gap-2">
             {notification}
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-danger-600 hover:bg-danger-500/10"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Keluar
-              </button>
-            </form>
           </nav>
         </header>
 
