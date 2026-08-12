@@ -1,20 +1,23 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { AssessmentForm, type CategoryWithDetails } from '@/components/assessment/AssessmentForm';
+import { BackLink } from '@/components/navigation/BackLink';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnTo } from '@/lib/navigation';
 import { formatScore } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CashierAssessmentPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ cashierId: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
 }) {
   const profile = await requirePermission('assessment');
-  const { cashierId } = await params;
+  const [{ cashierId }, navigationParams] = await Promise.all([params, searchParams]);
+  const backHref = getSafeReturnTo(navigationParams?.returnTo, '/assessment');
   const supabase = await createClient();
 
   const cashierPromise = supabase
@@ -60,7 +63,8 @@ export default async function CashierAssessmentPage({
   if (!period) {
     return (
       <div className="p-4">
-        <p className="text-sm text-surface-500">Tidak ada periode aktif.</p>
+        <BackLink href={backHref} label="Penilaian" />
+        <p className="mt-4 text-sm text-surface-500">Tidak ada periode aktif.</p>
       </div>
     );
   }
@@ -171,13 +175,7 @@ export default async function CashierAssessmentPage({
 
   return (
     <div className="p-4">
-        <Link
-          href="/assessment"
-          className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Penilaian</span>
-        </Link>
+        <BackLink href={backHref} label="Penilaian" />
 
         <div className="mt-2">
           <div className="flex items-center gap-2">

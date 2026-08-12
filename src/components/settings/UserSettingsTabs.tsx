@@ -1,10 +1,22 @@
 'use client';
 
 import { ShieldCheck, UserPlus, Users } from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { cn } from '@/lib/cn';
 
 type TabId = 'users' | 'permissions' | 'invite';
+const TAB_IDS: TabId[] = ['users', 'permissions', 'invite'];
+
+function isTabId(value: string | null): value is TabId {
+  return value !== null && TAB_IDS.includes(value as TabId);
+}
 
 export function UserSettingsTabs({
   userList,
@@ -15,7 +27,13 @@ export function UserSettingsTabs({
   rolePermissions: ReactNode;
   invite: ReactNode;
 }) {
-  const [activeTab, setActiveTab] = useState<TabId>('users');
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<TabId>(() =>
+    isTabId(requestedTab) ? requestedTab : 'users'
+  );
   const tabs = [
     { id: 'users' as const, label: 'Pengguna', icon: Users },
     { id: 'permissions' as const, label: 'Hak Akses', icon: ShieldCheck },
@@ -32,6 +50,19 @@ export function UserSettingsTabs({
     invite: null,
   });
 
+  useEffect(() => {
+    setActiveTab(isTabId(requestedTab) ? requestedTab : 'users');
+  }, [requestedTab]);
+
+  function selectTab(tabId: TabId) {
+    setActiveTab(tabId);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tabId === 'users') params.delete('tab');
+    else params.set('tab', tabId);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  }
+
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, tabId: TabId) {
     const currentIndex = tabs.findIndex((tab) => tab.id === tabId);
     if (currentIndex < 0) return;
@@ -45,7 +76,7 @@ export function UserSettingsTabs({
 
     event.preventDefault();
     const nextTab = tabs[nextIndex].id;
-    setActiveTab(nextTab);
+    selectTab(nextTab);
     tabRefs.current[nextTab]?.focus();
   }
 
@@ -70,7 +101,7 @@ export function UserSettingsTabs({
               ref={(element) => {
                 tabRefs.current[id] = element;
               }}
-              onClick={() => setActiveTab(id)}
+              onClick={() => selectTab(id)}
               onKeyDown={(event) => handleTabKeyDown(event, id)}
               className={cn(
                 'flex min-w-max flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/50',

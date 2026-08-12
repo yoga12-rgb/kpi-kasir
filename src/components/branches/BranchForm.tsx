@@ -6,9 +6,10 @@ import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { useQueryClient } from '@tanstack/react-query';
 import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
+import { withReturnTo } from '@/lib/navigation';
 import { getErrorMessage } from '@/lib/utils';
 
-export function BranchForm() {
+export function BranchForm({ returnTo = '/branches' }: { returnTo?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
@@ -41,8 +42,7 @@ export function BranchForm() {
         appQueryKeys.leaderboardRoot,
         appQueryKeys.mentoringSessionsRoot,
       ]);
-      router.push(`/branches/${data.branch.id}`);
-      router.refresh();
+      router.push(withReturnTo(`/branches/${data.branch.id}`, returnTo));
     } catch (err) {
       setError(getErrorMessage(err));
       setLoading(false);

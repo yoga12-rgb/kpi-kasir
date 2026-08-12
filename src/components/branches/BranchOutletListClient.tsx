@@ -7,6 +7,8 @@ import { SearchField } from '@/components/search/SearchField';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { withReturnTo } from '@/lib/navigation';
 import { getErrorMessage } from '@/lib/utils';
 
 const QUERY_KEYS = ['q', 'page'];
@@ -74,6 +76,7 @@ export function BranchOutletListClient({
   );
   const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
+  const returnTo = useCurrentReturnTo();
 
   return (
     <>
@@ -100,7 +103,11 @@ export function BranchOutletListClient({
       </div>
       <div className="space-y-3" aria-busy={isPending}>
         {result.items.map((outlet) => (
-          <Link key={outlet.id} href={`/outlets/${outlet.id}`} className="block">
+          <Link
+            key={outlet.id}
+            href={withReturnTo(`/outlets/${outlet.id}`, returnTo)}
+            className="block"
+          >
             <Card className="transition-colors hover:bg-surface-100">
               <div className="flex items-center justify-between">
                 <div>

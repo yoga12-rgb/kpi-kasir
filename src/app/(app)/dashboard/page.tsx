@@ -20,6 +20,7 @@ import { getDashboardSnapshot } from '@/lib/dashboard/snapshot';
 import { getUnreadNotificationCount } from '@/lib/notifications/unread';
 import { logServerPerformance, nowMs } from '@/lib/performance/server';
 import { createClient } from '@/lib/supabase/server';
+import { withReturnTo } from '@/lib/navigation';
 import { formatDate, formatScore } from '@/lib/utils';
 
 interface ScoreRow {
@@ -91,7 +92,7 @@ function ScoreList({ title, rows, emptyLabel }: { title: string; rows: ScoreRow[
           {rows.map((row) => (
             <Link
               key={row.id}
-              href={`/cashiers/${row.id}`}
+              href={withReturnTo(`/cashiers/${row.id}`, '/dashboard')}
               className="flex items-center justify-between gap-3 border-b border-surface-200 py-2 last:border-0"
             >
               <span className="truncate text-sm text-surface-700">{row.name}</span>
@@ -208,7 +209,7 @@ export default async function DashboardPage() {
               title="Undangan aktif"
               value={invitePendingCount}
               description={inviteExpiredCount !== null ? `${inviteExpiredCount} sudah kedaluwarsa` : 'Status belum tersedia'}
-              href="/settings/users"
+              href="/settings/users?tab=invite"
               icon={Clock3}
               tone="warning"
             />

@@ -6,6 +6,7 @@ import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
+import { withReturnTo } from '@/lib/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +94,11 @@ export default async function AssessmentPage() {
                   ? `Berjalan ${completion?.assessed_details ?? 0}/${completion?.total_details ?? 0}`
                   : 'Belum mulai';
             return (
-              <Link key={cashier.id} href={`/assessment/${cashier.id}`} className="block">
+              <Link
+                key={cashier.id}
+                href={withReturnTo(`/assessment/${cashier.id}`, '/assessment')}
+                className="block"
+              >
                 <Card className="flex items-center gap-3 transition-colors hover:bg-surface-100">
                   <CashierAvatar
                     name={cashier.name}

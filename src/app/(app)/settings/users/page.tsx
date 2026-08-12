@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; tab?: string }>;
 }) {
   const admin = await requireRole(['admin']);
   const supabase = await createClient();

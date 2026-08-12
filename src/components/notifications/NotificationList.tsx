@@ -22,6 +22,7 @@ import Button from '@/components/ui/Button';
 import { EmptyState, ListSkeleton } from '@/components/ui/Feedback';
 import { appQueryKeys } from '@/lib/client/query-keys';
 import { markNotificationReadInPages } from '@/lib/client/notification-cache';
+import { withReturnTo } from '@/lib/navigation';
 import { formatDateTime } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
@@ -247,7 +248,7 @@ export function NotificationList() {
     try {
       if (!notification.is_read) await markRead(notification.id);
       const href = getNotificationHref(notification);
-      if (href) router.push(href);
+      if (href) router.push(withReturnTo(href, '/notifications'));
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : 'Gagal membuka notifikasi');
     } finally {

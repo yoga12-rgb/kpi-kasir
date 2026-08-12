@@ -28,14 +28,14 @@ const navItems: PrimaryNavItem[] = [
   { href: '/dashboard', label: 'Beranda', icon: Home, prefetch: true },
   {
     href: '/assessment',
-    label: 'Nilai',
+    label: 'Penilaian',
     icon: ClipboardList,
     permission: 'assessment' as Permission,
     prefetch: true,
   },
   {
     href: '/leaderboard',
-    label: 'Ranking',
+    label: 'Peringkat',
     icon: Trophy,
     permission: 'leaderboard' as Permission,
     prefetch: true,
@@ -46,7 +46,7 @@ const navItems: PrimaryNavItem[] = [
     mobileLabel: 'Damping',
     icon: ClipboardCheck,
     permission: 'mentoring' as Permission,
-    prefetch: null,
+    prefetch: true,
   },
   { href: '/menu', label: 'Lainnya', icon: Menu, prefetch: true },
 ];
@@ -65,8 +65,19 @@ export function AppShellClient({
     (item) => !item.permission || hasPermission(permissions, item.permission)
   );
 
+  const secondaryMenuRoots = [
+    '/branches',
+    '/cashiers',
+    '/outlets',
+    '/notifications',
+    '/settings',
+    '/about',
+  ];
+  const isRouteOrChild = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const isActive = (href: string) =>
-    pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+    href === '/menu'
+      ? pathname === '/menu' || secondaryMenuRoots.some((root) => isRouteOrChild(root))
+      : isRouteOrChild(href);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-app flex-col border-x border-surface-200 bg-surface-50 md:max-w-7xl md:flex-row">

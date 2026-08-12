@@ -6,6 +6,8 @@ import { ClientPagination } from '@/components/search/ClientPagination';
 import { SearchField } from '@/components/search/SearchField';
 import { Card } from '@/components/ui/Card';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { withReturnTo } from '@/lib/navigation';
 import { formatEmploymentDuration, getErrorMessage } from '@/lib/utils';
 
 const QUERY_KEYS = ['q', 'page'];
@@ -73,6 +75,7 @@ export function OutletCashierListClient({
   );
   const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
+  const returnTo = useCurrentReturnTo();
 
   return (
     <>
@@ -99,7 +102,11 @@ export function OutletCashierListClient({
       </div>
       <div className="space-y-2" aria-busy={isPending}>
         {result.items.map((cashier) => (
-          <Link key={cashier.id} href={`/cashiers/${cashier.id}`} className="block">
+          <Link
+            key={cashier.id}
+            href={withReturnTo(`/cashiers/${cashier.id}`, returnTo)}
+            className="block"
+          >
             <Card className="flex items-center justify-between transition-colors hover:bg-surface-100">
               <div>
                 <p className="font-medium text-surface-900">{cashier.name}</p>

@@ -9,6 +9,8 @@ import { SearchField } from '@/components/search/SearchField';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { NavigationLink } from '@/components/ui/NavigationLink';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { withReturnTo } from '@/lib/navigation';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
 import { formatDate, formatEmploymentDuration, getErrorMessage } from '@/lib/utils';
 
@@ -113,6 +115,7 @@ export function CashierListClient({
     retry,
   } = useUrlList({ initialResult, queryKeys, fetchPage });
   const searchParams = useSearchParams();
+  const returnTo = useCurrentReturnTo();
   const status = getStatus(searchParams.get('status') ?? initialStatus, isAdmin);
 
   return (
@@ -161,7 +164,7 @@ export function CashierListClient({
         {result.items.map((cashier) => (
           <NavigationLink
             key={cashier.id}
-            href={`/cashiers/${cashier.id}`}
+            href={withReturnTo(`/cashiers/${cashier.id}`, returnTo)}
             pendingIndicator
             className="block"
           >

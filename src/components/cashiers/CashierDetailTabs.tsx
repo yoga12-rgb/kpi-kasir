@@ -7,6 +7,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from 
 import { ArrowLeftRight, HandHelping, History } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { appQueryKeys } from '@/lib/client/query-keys';
+import { withReturnTo } from '@/lib/navigation';
 import { getErrorMessage } from '@/lib/utils';
 
 const TransferForm = dynamic(
@@ -180,7 +181,13 @@ function PlacementPanel({
   );
 }
 
-function MentoringPanel({ data }: { data: Extract<TabData, { tab: 'mentoring' }> }) {
+function MentoringPanel({
+  data,
+  cashierId,
+}: {
+  data: Extract<TabData, { tab: 'mentoring' }>;
+  cashierId: string;
+}) {
   return (
     <div>
       <section className="card mt-4">
@@ -212,7 +219,10 @@ function MentoringPanel({ data }: { data: Extract<TabData, { tab: 'mentoring' }>
           )}
         </div>
       </section>
-      <Link href="/mentoring" className="btn btn-primary mt-3 w-full">
+      <Link
+        href={withReturnTo('/mentoring/new', `/cashiers/${cashierId}`)}
+        className="btn btn-primary mt-3 w-full"
+      >
         Catat Pendampingan
       </Link>
     </div>
@@ -299,7 +309,7 @@ export function CashierDetailTabs({
       </section>
     );
   } else if (activeTab === 'mentoring' && activeTabQuery.data?.tab === 'mentoring') {
-    activeContent = <MentoringPanel data={activeTabQuery.data} />;
+    activeContent = <MentoringPanel data={activeTabQuery.data} cashierId={cashierId} />;
   } else if (activeTabQuery.data?.tab === 'placement') {
     activeContent = (
       <PlacementPanel data={activeTabQuery.data} canViewStatusHistory={canViewStatusHistory} />

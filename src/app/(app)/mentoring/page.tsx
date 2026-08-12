@@ -2,11 +2,23 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { MentoringList } from '@/components/mentoring/MentoringList';
 import { requirePermission } from '@/lib/auth/guards';
+import { buildPath, withReturnTo } from '@/lib/navigation';
 import { createClient } from '@/lib/supabase/server';
 
-export default async function MentoringPage() {
+export default async function MentoringPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ branchId?: string; outletId?: string; from?: string; to?: string }>;
+}) {
   const profile = await requirePermission('mentoring');
   const supabase = await createClient();
+  const params = await searchParams;
+  const returnTo = buildPath('/mentoring', {
+    branchId: params?.branchId,
+    outletId: params?.outletId,
+    from: params?.from,
+    to: params?.to,
+  });
 
   if (profile.role === 'admin') {
     const [branchesResult, outletsResult] = await Promise.all([
@@ -23,6 +35,7 @@ export default async function MentoringPage() {
       <MentoringPageContent
         branches={branchesResult.data ?? []}
         outlets={outletsResult.data ?? []}
+        returnTo={returnTo}
       />
     );
   }
@@ -51,15 +64,23 @@ export default async function MentoringPage() {
       : Promise.resolve({ data: [] as { id: string; name: string; branch_id: string }[] }),
   ]);
 
-  return <MentoringPageContent branches={branchesResult.data ?? []} outlets={outletsResult.data ?? []} />;
+  return (
+    <MentoringPageContent
+      branches={branchesResult.data ?? []}
+      outlets={outletsResult.data ?? []}
+      returnTo={returnTo}
+    />
+  );
 }
 
 function MentoringPageContent({
   branches,
   outlets,
+  returnTo,
 }: {
   branches: { id: string; name: string }[];
   outlets: { id: string; name: string; branch_id: string }[];
+  returnTo: string;
 }) {
   return (
     <div className="p-4">
@@ -68,7 +89,10 @@ function MentoringPageContent({
             <h1 className="text-xl font-bold text-surface-900">Pendampingan</h1>
             <p className="mt-0.5 text-sm text-surface-500">Riwayat kunjungan lapangan</p>
           </div>
-          <Link href="/mentoring/new" className="btn btn-primary flex items-center gap-1">
+          <Link
+            href={withReturnTo('/mentoring/new', returnTo)}
+            className="btn btn-primary flex items-center gap-1"
+          >
             <Plus className="h-4 w-4" />
             <span>Sesi</span>
           </Link>

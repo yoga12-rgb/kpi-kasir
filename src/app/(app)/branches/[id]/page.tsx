@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
+import { BackLink } from '@/components/navigation/BackLink';
 import { OutletForm } from '@/components/outlets/OutletForm';
 import { BranchEditForm } from '@/components/branches/BranchEditForm';
 import {
@@ -12,6 +12,7 @@ import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
 import { getTotalPages, parsePage } from '@/lib/pagination';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnTo } from '@/lib/navigation';
 import { queryOutlets } from '@/lib/server/list-queries';
 
 export default async function BranchDetailPage({
@@ -19,13 +20,14 @@ export default async function BranchDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; returnTo?: string }>;
 }) {
   const profile = await requirePermission('branches.view');
   const permissions = await getRolePermissions(profile.role);
   const canCreateOutlet = profile.role === 'admin' || hasPermission(permissions, 'outlets.create');
   const { id } = await params;
   const listParams = await searchParams;
+  const backHref = getSafeReturnTo(listParams?.returnTo, '/branches');
   const search = listParams?.q?.trim().slice(0, 100) ?? '';
   const page = parsePage(listParams?.page);
   const pageSize = 25;
@@ -67,9 +69,7 @@ export default async function BranchDetailPage({
 
   return (
     <div className="p-4">
-      <Link href="/branches" className="text-sm text-primary-600 hover:underline">
-        &larr; Kembali
-      </Link>
+      <BackLink href={backHref} label="Cabang" />
 
       <div className="mt-2 flex items-center justify-between">
         <div>

@@ -11,6 +11,8 @@ import { Spinner } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
 import { cn } from '@/lib/cn';
 import { appQueryKeys } from '@/lib/client/query-keys';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { withReturnTo } from '@/lib/navigation';
 import { formatScore } from '@/lib/utils';
 
 const PAGE_SIZE = 25;
@@ -90,6 +92,7 @@ export function LeaderboardView({
   const [search, setSearch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const returnTo = useCurrentReturnTo();
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -373,7 +376,7 @@ export function LeaderboardView({
           {rows.map((row) => (
             <Link
               key={`${periodId || 'cumulative'}-${row.cashier_id}`}
-              href={`/cashiers/${row.cashier_id}`}
+              href={withReturnTo(`/cashiers/${row.cashier_id}`, returnTo)}
               className="block"
             >
               <Card className="flex items-center gap-3 py-3 transition-colors hover:bg-surface-100">

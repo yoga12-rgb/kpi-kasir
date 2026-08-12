@@ -1,19 +1,26 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { BackLink } from '@/components/navigation/BackLink';
 import { MentoringEvidenceGallery } from '@/components/mentoring/MentoringEvidenceGallery';
 import { MentoringEvidenceUploadPanel } from '@/components/mentoring/MentoringEvidenceUploadPanel';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 import { mentoringEvidenceProxyUrl } from '@/lib/storage/mentoring-evidence';
 import { formatDate } from '@/lib/utils';
+import { getSafeReturnTo } from '@/lib/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MentoringDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MentoringDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
+}) {
   const profile = await requirePermission('mentoring');
-  const { id } = await params;
+  const [{ id }, navigationParams] = await Promise.all([params, searchParams]);
+  const backHref = getSafeReturnTo(navigationParams?.returnTo, '/mentoring');
   const supabase = await createClient();
 
   const [sessionResult, branchAccessResult] = await Promise.all([
@@ -67,13 +74,7 @@ export default async function MentoringDetailPage({ params }: { params: Promise<
 
   return (
     <div className="p-4">
-      <Link
-        href="/mentoring"
-        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Pendampingan</span>
-      </Link>
+      <BackLink href={backHref} label="Pendampingan" />
 
       <h1 className="mt-2 text-xl font-bold text-surface-900">{outlet.name}</h1>
       <p className="text-sm text-surface-500">

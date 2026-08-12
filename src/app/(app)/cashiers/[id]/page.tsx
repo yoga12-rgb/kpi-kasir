@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, CalendarDays, MapPin } from 'lucide-react';
+import { CalendarDays, MapPin } from 'lucide-react';
+import { BackLink } from '@/components/navigation/BackLink';
 import { Card } from '@/components/ui/Card';
 import { CashierAvatarForm } from '@/components/cashiers/CashierAvatarForm';
 import { CashierDetailTabs } from '@/components/cashiers/CashierDetailTabs';
@@ -11,11 +12,23 @@ import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
 import { createClient } from '@/lib/supabase/server';
 import { getCashierAvatarUrl } from '@/lib/storage/cashier-avatar';
+import { getSafeReturnTo, withReturnTo } from '@/lib/navigation';
 import { formatDate, formatEmploymentDuration, formatScore } from '@/lib/utils';
 
-export default async function CashierDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CashierDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
+}) {
   const profile = await requirePermission('cashiers.view');
-  const [permissions, { id }] = await Promise.all([getRolePermissions(profile.role), params]);
+  const [permissions, { id }, navigationParams] = await Promise.all([
+    getRolePermissions(profile.role),
+    params,
+    searchParams,
+  ]);
+  const backHref = getSafeReturnTo(navigationParams?.returnTo, '/cashiers');
   const canAssess = profile.role === 'admin' || hasPermission(permissions, 'assessment');
   const canMentor = profile.role === 'admin' || hasPermission(permissions, 'mentoring');
   const canEditCashier = profile.role === 'admin';
@@ -87,13 +100,7 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="p-4">
-      <Link
-        href="/cashiers"
-        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Kasir</span>
-      </Link>
+      <BackLink href={backHref} label="Kasir" />
 
       <Card className="mt-4 overflow-hidden border-primary-500/20 p-0 shadow-none">
         <div className="px-5 pb-6 pt-6 text-center sm:px-8 sm:pb-7 sm:pt-7">
@@ -157,7 +164,10 @@ export default async function CashierDetailPage({ params }: { params: Promise<{ 
                   {formatScore(periodScore?.total_score ?? null)}
                 </p>
               </div>
-              <Link href={`/assessment/${cashier.id}`} className="btn btn-primary btn-sm shrink-0">
+              <Link
+                href={withReturnTo(`/assessment/${cashier.id}`, `/cashiers/${cashier.id}`)}
+                className="btn btn-primary btn-sm shrink-0"
+              >
                 Nilai
               </Link>
             </div>

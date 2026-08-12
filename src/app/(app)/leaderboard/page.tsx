@@ -48,7 +48,7 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="p-4">
-        <h1 className="text-xl font-bold text-surface-900">Leaderboard</h1>
+        <h1 className="text-xl font-bold text-surface-900">Peringkat</h1>
         <p className="mt-0.5 text-sm text-surface-500">Ranking performa kasir</p>
         <div className="mt-4">
             <LeaderboardView

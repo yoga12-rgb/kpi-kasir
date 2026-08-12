@@ -4,11 +4,14 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronRight, Filter, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
 import { appQueryKeys } from '@/lib/client/query-keys';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { buildPath, withReturnTo } from '@/lib/navigation';
 import { formatDate } from '@/lib/utils';
 
 const PAGE_SIZE = 20;
@@ -100,8 +103,26 @@ export function MentoringList({
   branches: BranchOption[];
   outlets: OutletOption[];
 }) {
-  const [filters, setFilters] = useState<Filters>({ branchId: '', outletId: '', from: '', to: '' });
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = useCurrentReturnTo();
+  const [filters, setFilters] = useState<Filters>(() => ({
+    branchId: searchParams.get('branchId') ?? '',
+    outletId: searchParams.get('outletId') ?? '',
+    from: searchParams.get('from') ?? '',
+    to: searchParams.get('to') ?? '',
+  }));
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setFilters({
+      branchId: searchParams.get('branchId') ?? '',
+      outletId: searchParams.get('outletId') ?? '',
+      from: searchParams.get('from') ?? '',
+      to: searchParams.get('to') ?? '',
+    });
+  }, [searchParams]);
 
   const visibleOutlets = useMemo(
     () =>
@@ -167,6 +188,19 @@ export function MentoringList({
 
   function resetFilters() {
     setFilters({ branchId: '', outletId: '', from: '', to: '' });
+    router.replace(pathname);
+  }
+
+  function updateFilters(nextFilters: Filters) {
+    setFilters(nextFilters);
+    router.replace(
+      buildPath(pathname, {
+        branchId: nextFilters.branchId,
+        outletId: nextFilters.outletId,
+        from: nextFilters.from,
+        to: nextFilters.to,
+      })
+    );
   }
 
   function retry() {
@@ -203,7 +237,7 @@ export function MentoringList({
             label="Cabang"
             value={filters.branchId}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, branchId: event.target.value, outletId: '' }))
+              updateFilters({ ...filters, branchId: event.target.value, outletId: '' })
             }
             options={[
               { value: '', label: 'Semua cabang' },
@@ -215,7 +249,7 @@ export function MentoringList({
             label="Outlet"
             value={filters.outletId}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, outletId: event.target.value }))
+              updateFilters({ ...filters, outletId: event.target.value })
             }
             options={[
               { value: '', label: 'Semua outlet' },
@@ -231,7 +265,7 @@ export function MentoringList({
             type="date"
             value={filters.from}
             onChange={(event) =>
-              setFilters((current) => ({ ...current, from: event.target.value }))
+              updateFilters({ ...filters, from: event.target.value })
             }
           />
           <Input
@@ -239,7 +273,7 @@ export function MentoringList({
             label="Sampai tanggal"
             type="date"
             value={filters.to}
-            onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))}
+            onChange={(event) => updateFilters({ ...filters, to: event.target.value })}
           />
         </div>
 
@@ -275,7 +309,11 @@ export function MentoringList({
             const conductedBy = getRelation(session.conducted_by);
 
             return (
-              <Link key={session.id} href={`/mentoring/${session.id}`} className="block">
+              <Link
+                key={session.id}
+                href={withReturnTo(`/mentoring/${session.id}`, returnTo)}
+                className="block"
+              >
                 <Card className="flex items-center justify-between transition-colors hover:bg-surface-100">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-surface-900">{outlet?.name ?? '-'}</p>

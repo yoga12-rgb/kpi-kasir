@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { NavigationLink } from '@/components/ui/NavigationLink';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
+import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
+import { withReturnTo } from '@/lib/navigation';
 import { getErrorMessage } from '@/lib/utils';
 
 const QUERY_KEYS = ['q', 'page'];
@@ -78,6 +80,7 @@ export function BranchListClient({
   );
   const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
+  const returnTo = useCurrentReturnTo();
 
   return (
     <>
@@ -94,7 +97,7 @@ export function BranchListClient({
         </div>
         {canCreate && (
           <Link
-            href="/branches/new"
+            href={withReturnTo('/branches/new', returnTo)}
             className="btn btn-primary flex h-10 shrink-0 items-center gap-1"
           >
             <Plus className="h-4 w-4" />
@@ -119,7 +122,7 @@ export function BranchListClient({
         {result.items.map((branch) => (
           <NavigationLink
             key={branch.id}
-            href={`/branches/${branch.id}`}
+            href={withReturnTo(`/branches/${branch.id}`, returnTo)}
             pendingIndicator
             className="block"
           >

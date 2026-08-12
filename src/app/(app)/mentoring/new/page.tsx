@@ -1,10 +1,18 @@
 import { MentoringForm } from '@/components/mentoring/MentoringForm';
+import { BackLink } from '@/components/navigation/BackLink';
 import { requirePermission } from '@/lib/auth/guards';
 import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnTo } from '@/lib/navigation';
 
-export default async function NewMentoringPage() {
+export default async function NewMentoringPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ returnTo?: string }>;
+}) {
   const profile = await requirePermission('mentoring');
+  const params = await searchParams;
+  const backHref = getSafeReturnTo(params?.returnTo, '/mentoring');
   const supabase = await createClient();
 
   const branchIds =
@@ -43,7 +51,8 @@ export default async function NewMentoringPage() {
 
   return (
     <div className="p-4">
-        <h1 className="text-xl font-bold text-surface-900">Sesi Pendampingan Baru</h1>
+        <BackLink href={backHref} label="Pendampingan" />
+        <h1 className="mt-2 text-xl font-bold text-surface-900">Sesi Pendampingan Baru</h1>
         <p className="mt-0.5 text-sm text-surface-500">Catat kunjungan lapangan</p>
         <div className="mt-6">
           <MentoringForm
@@ -56,6 +65,7 @@ export default async function NewMentoringPage() {
               })),
             }))}
             avatars={avatars}
+            returnTo={backHref}
             evidenceUploadEnabled={process.env.MENTORING_EVIDENCE_UPLOAD_ENABLED === 'true'}
           />
         </div>

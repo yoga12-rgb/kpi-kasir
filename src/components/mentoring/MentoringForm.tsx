@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import Button from '@/components/ui/Button';
@@ -13,6 +14,7 @@ import {
 import { getErrorMessage } from '@/lib/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
+import { withReturnTo } from '@/lib/navigation';
 
 export interface OutletOption {
   id: string;
@@ -24,10 +26,12 @@ export function MentoringForm({
   outlets,
   avatars = {},
   evidenceUploadEnabled = false,
+  returnTo = '/mentoring',
 }: {
   outlets: OutletOption[];
   avatars?: Record<string, string | null>;
   evidenceUploadEnabled?: boolean;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -142,8 +146,7 @@ export function MentoringForm({
         appQueryKeys.mentoringSessionsRoot,
         appQueryKeys.cashierTabsRoot,
       ]);
-      router.push(`/mentoring/${sessionId}`);
-      router.refresh();
+      router.push(withReturnTo(`/mentoring/${sessionId}`, returnTo));
     } catch (err) {
       setToast({ message: getErrorMessage(err), variant: 'error' });
       setLoading(false);
@@ -228,12 +231,12 @@ export function MentoringForm({
               <li key={failure}>{failure}</li>
             ))}
           </ul>
-          <a
-            href={`/mentoring/${createdSessionId}`}
+          <Link
+            href={withReturnTo(`/mentoring/${createdSessionId}`, returnTo)}
             className="text-danger-800 mt-3 inline-flex font-medium underline underline-offset-2"
           >
             Buka sesi tanpa menunggu foto
-          </a>
+          </Link>
         </div>
       )}
 

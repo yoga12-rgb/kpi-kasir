@@ -1,7 +1,6 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { BackLink } from '@/components/navigation/BackLink';
 import { CashierForm } from '@/components/cashiers/CashierForm';
 import {
   OutletCashierListClient,
@@ -13,6 +12,7 @@ import { hasPermission } from '@/lib/auth/permissions';
 import { getRolePermissions } from '@/lib/auth/permissions-server';
 import { getTotalPages, parsePage } from '@/lib/pagination';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnTo } from '@/lib/navigation';
 import { queryCashiers } from '@/lib/server/list-queries';
 
 export default async function OutletDetailPage({
@@ -20,7 +20,7 @@ export default async function OutletDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; returnTo?: string }>;
 }) {
   const profile = await requireAnyPermission([
     'branches.view',
@@ -35,6 +35,7 @@ export default async function OutletDetailPage({
   const canUpdateOutlet = profile.role === 'admin' || hasPermission(permissions, 'outlets.update');
   const { id } = await params;
   const listParams = await searchParams;
+  const backHref = getSafeReturnTo(listParams?.returnTo, `/branches/${id}`);
   const search = listParams?.q?.trim().slice(0, 100) ?? '';
   const page = parsePage(listParams?.page);
   const pageSize = 25;
@@ -88,13 +89,7 @@ export default async function OutletDetailPage({
 
   return (
     <div className="p-4">
-      <Link
-        href={`/branches/${outlet.branch_id}`}
-        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>{branch?.name ?? 'Cabang'}</span>
-      </Link>
+      <BackLink href={backHref} label={branch?.name ?? 'Cabang'} />
 
       <div className="mt-2 flex items-center justify-between">
         <div>

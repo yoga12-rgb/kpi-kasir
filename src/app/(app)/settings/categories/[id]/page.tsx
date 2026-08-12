@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -6,16 +5,18 @@ import { CategoryEditForm } from '@/components/categories/CategoryEditForm';
 import { CategoryStatusButton } from '@/components/categories/CategoryStatusButton';
 import { DetailForm } from '@/components/categories/DetailForm';
 import { DetailStatusButton } from '@/components/categories/DetailStatusButton';
+import { BackLink } from '@/components/navigation/BackLink';
 import { NavigationLink } from '@/components/ui/NavigationLink';
 import { requireRole } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
+import { getSafeReturnTo } from '@/lib/navigation';
 
 export default async function CategoryDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ detailStatus?: string }>;
+  searchParams?: Promise<{ detailStatus?: string; returnTo?: string }>;
 }) {
   await requireRole(['admin']);
   const { id } = await params;
@@ -53,16 +54,11 @@ export default async function CategoryDetailPage({
   const categoryListHref = category.is_active
     ? '/settings/categories'
     : '/settings/categories?status=archived';
+  const backHref = getSafeReturnTo(query?.returnTo, categoryListHref);
 
   return (
     <div className="p-4">
-      <NavigationLink
-        href={categoryListHref}
-        className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Indikator</span>
-      </NavigationLink>
+      <BackLink href={backHref} label="Indikator" />
 
       <div className="mt-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
