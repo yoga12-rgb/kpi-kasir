@@ -1,4 +1,8 @@
 import { encodeLeaderboardCursor } from '@/lib/leaderboard/cursor';
+import {
+  LeaderboardIndicatorScore,
+  normalizeIndicatorScores,
+} from '@/lib/leaderboard/indicator-scores';
 import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
 import { createClient } from '@/lib/supabase/server';
 
@@ -16,6 +20,7 @@ export interface InitialLeaderboardRow {
   branch_name: string;
   total_score: number;
   rank: number;
+  indicator_scores: LeaderboardIndicatorScore[];
 }
 
 export interface InitialLeaderboardResult {
@@ -65,7 +70,7 @@ export async function getInitialLeaderboardResult(
     const { data, error } = await supabase
       .from('leaderboard_entry')
       .select(
-        'cashier_id, cashier_name, avatar_path, outlet_id, outlet_name, branch_id, branch_name, total_score, rank_global'
+        'cashier_id, cashier_name, avatar_path, outlet_id, outlet_name, branch_id, branch_name, total_score, category_scores, rank_global'
       )
       .in('branch_id', branchIds)
       .eq('period_id', period.id)
@@ -83,13 +88,14 @@ export async function getInitialLeaderboardResult(
       branch_id: score.branch_id,
       branch_name: score.branch_name ?? score.branch_id,
       total_score: Number(score.total_score),
+      indicator_scores: normalizeIndicatorScores(score.category_scores),
       rank: score.rank_global ?? index + 1,
     }));
   } else {
     const { data, error } = await supabase
       .from('cashier_period_score')
       .select(
-        'cashier_id, total_score, cashier!inner(id, name, avatar_url, outlet!inner(id, branch_id, name, branch(name)))'
+        'cashier_id, total_score, category_scores, cashier!inner(id, name, avatar_url, outlet!inner(id, branch_id, name, branch(name)))'
       )
       .eq('period_id', period.id)
       .in('cashier.outlet.branch_id', branchIds)
@@ -114,6 +120,7 @@ export async function getInitialLeaderboardResult(
         branch_id: cashier.outlet.branch_id,
         branch_name: cashier.outlet.branch.name,
         total_score: Number(score.total_score),
+        indicator_scores: normalizeIndicatorScores(score.category_scores),
         rank: index + 1,
       };
     });

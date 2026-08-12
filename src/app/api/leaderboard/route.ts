@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { requirePermission } from '@/lib/auth/guards';
 import { withApiRoute } from '@/lib/api/route';
 import { decodeLeaderboardCursor, encodeLeaderboardCursor } from '@/lib/leaderboard/cursor';
+import {
+  LeaderboardIndicatorScore,
+  normalizeIndicatorScores,
+} from '@/lib/leaderboard/indicator-scores';
 import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
 import { createClient } from '@/lib/supabase/server';
 
@@ -18,6 +22,7 @@ interface LeaderboardRow {
   branch_name: string;
   total_score: number;
   rank: number;
+  indicator_scores: LeaderboardIndicatorScore[];
 }
 
 const optionalUuid = z.preprocess(
@@ -53,9 +58,7 @@ function csvCell(value: string | number | null | undefined) {
 function csvResponse(rows: LeaderboardRow[], label: string | null, mode: string) {
   const header = ['Peringkat', 'Nama', 'Outlet', 'Cabang', 'Skor'];
   const body = rows.map((row) =>
-    [row.rank, row.name, row.outlet_name, row.branch_name, row.total_score]
-      .map(csvCell)
-      .join(',')
+    [row.rank, row.name, row.outlet_name, row.branch_name, row.total_score].map(csvCell).join(',')
   );
   const csv = [header.map(csvCell).join(','), ...body].join('\r\n');
   const safeLabel = (label ?? mode).replace(/[^a-zA-Z0-9_-]+/g, '-');
@@ -190,7 +193,7 @@ async function handleGET(request: Request) {
     let query = supabase
       .from('leaderboard_entry')
       .select(
-        'cashier_id, cashier_name, avatar_path, outlet_id, outlet_name, branch_id, branch_name, total_score, rank_global, rank_branch, rank_outlet'
+        'cashier_id, cashier_name, avatar_path, outlet_id, outlet_name, branch_id, branch_name, total_score, category_scores, rank_global, rank_branch, rank_outlet'
       )
       .in('branch_id', accessibleBranchIds)
       .eq('period_id', selectedPeriodId);
@@ -221,6 +224,7 @@ async function handleGET(request: Request) {
       branch_id: score.branch_id,
       branch_name: score.branch_name ?? score.branch_id,
       total_score: Number(score.total_score),
+      indicator_scores: normalizeIndicatorScores(score.category_scores),
       rank:
         level === 'global'
           ? (score.rank_global ?? rankOffset + index + 1)
@@ -232,7 +236,7 @@ async function handleGET(request: Request) {
     let query = supabase
       .from('cashier_period_score')
       .select(
-        'cashier_id, total_score, cashier!inner(id, name, avatar_url, outlet!inner(id, branch_id, name, branch(name)))'
+        'cashier_id, total_score, category_scores, cashier!inner(id, name, avatar_url, outlet!inner(id, branch_id, name, branch(name)))'
       )
       .eq('period_id', selectedPeriodId)
       .in('cashier.outlet.branch_id', accessibleBranchIds);
@@ -270,6 +274,7 @@ async function handleGET(request: Request) {
         branch_id: cashier.outlet.branch_id,
         branch_name: cashier.outlet.branch.name,
         total_score: Number(score.total_score),
+        indicator_scores: normalizeIndicatorScores(score.category_scores),
         rank: rankOffset + index + 1,
       };
     });
@@ -314,6 +319,7 @@ async function handleGET(request: Request) {
         branch_id: cashier.outlet.branch_id,
         branch_name: cashier.outlet.branch.name,
         total_score: Number(score.cumulative_score),
+        indicator_scores: [],
         rank: rankOffset + index + 1,
       };
     });
@@ -321,6 +327,39 @@ async function handleGET(request: Request) {
 
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
+
+  // Cumulative scores do not store an indicator breakdown. When a period is
+  // selected, attach that period's snapshot and label it in the UI as the
+  // reference period rather than presenting it as a cumulative breakdown.
+  if (mode === 'cumulative' && selectedPeriodId && pageRows.length > 0) {
+    const cashierIds = pageRows.map((row) => row.cashier_id);
+    const detailQuery =
+      selectedPeriodStatus === 'closed'
+        ? supabase
+            .from('leaderboard_entry')
+            .select('cashier_id, category_scores')
+            .eq('period_id', selectedPeriodId)
+            .in('cashier_id', cashierIds)
+        : supabase
+            .from('cashier_period_score')
+            .select('cashier_id, category_scores')
+            .eq('period_id', selectedPeriodId)
+            .in('cashier_id', cashierIds);
+    const { data: detailRows, error: detailError } = await detailQuery;
+    if (detailError) {
+      return NextResponse.json({ error: 'Gagal memuat rincian indikator' }, { status: 500 });
+    }
+
+    const indicatorsByCashier = new Map(
+      (detailRows ?? []).map((detail) => [
+        detail.cashier_id,
+        normalizeIndicatorScores(detail.category_scores),
+      ])
+    );
+    for (const row of pageRows) {
+      row.indicator_scores = indicatorsByCashier.get(row.cashier_id) ?? [];
+    }
+  }
   const lastRow = pageRows[pageRows.length - 1];
   const nextCursor =
     hasMore && lastRow

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.3] - 2026-08-13
+
+### Added
+
+- Menambahkan rincian nilai setiap indikator pada card leaderboard melalui kontrol ekspansi.
+- Menambahkan bar visual agar perbandingan nilai indikator lebih cepat dipindai.
+
+### Performance
+
+- Mengirim snapshot indikator dari sumber skor periode yang sama tanpa fetch tambahan saat mode periode.
+
 ## [0.2.2] - 2026-08-12
 
 ### Changed

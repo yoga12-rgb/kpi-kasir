@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
 import { cn } from '@/lib/cn';
 import { appQueryKeys } from '@/lib/client/query-keys';
+import { LeaderboardIndicatorScore } from '@/lib/leaderboard/indicator-scores';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { withReturnTo } from '@/lib/navigation';
 import { formatScore } from '@/lib/utils';
@@ -27,6 +28,7 @@ interface Row {
   branch_name: string;
   total_score: number;
   rank: number;
+  indicator_scores: LeaderboardIndicatorScore[];
 }
 
 interface BranchOption {
@@ -92,6 +94,7 @@ export function LeaderboardView({
   const [search, setSearch] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [expandedCashierId, setExpandedCashierId] = useState<string | null>(null);
   const returnTo = useCurrentReturnTo();
 
   useEffect(() => {
@@ -126,8 +129,7 @@ export function LeaderboardView({
         signal,
       });
       const data = (await response.json().catch(() => null)) as
-        | (Partial<LeaderboardResponse> & { error?: unknown })
-        | null;
+        (Partial<LeaderboardResponse> & { error?: unknown }) | null;
 
       if (!response.ok || !data || !Array.isArray(data.rows)) {
         throw new Error(getErrorMessage(data));
@@ -143,6 +145,10 @@ export function LeaderboardView({
   );
 
   const requestKey = buildParams('json').toString();
+  useEffect(() => {
+    setExpandedCashierId(null);
+  }, [requestKey]);
+
   const initialPage = useMemo<LeaderboardResponse | undefined>(() => {
     if (!initialResult || initialResult.requestKey !== requestKey) return undefined;
     return {
@@ -153,14 +159,11 @@ export function LeaderboardView({
   }, [initialResult, requestKey]);
   const leaderboardQuery = useInfiniteQuery<LeaderboardResponse, Error>({
     queryKey: appQueryKeys.leaderboard(level, mode, periodId, branchId, outletId, search),
-    queryFn: ({ pageParam, signal }) =>
-      fetchPage({ cursor: pageParam as string | null, signal }),
+    queryFn: ({ pageParam, signal }) => fetchPage({ cursor: pageParam as string | null, signal }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
-    initialData: initialPage
-      ? { pages: [initialPage], pageParams: [null] }
-      : undefined,
+    initialData: initialPage ? { pages: [initialPage], pageParams: [null] } : undefined,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
@@ -218,6 +221,7 @@ export function LeaderboardView({
     setOutletId('');
     setSearchInput('');
     setSearch('');
+    setExpandedCashierId(null);
   }
 
   return (
@@ -374,63 +378,138 @@ export function LeaderboardView({
       {!loading && rows.length > 0 && (
         <div className="space-y-2">
           {rows.map((row) => (
-            <Link
+            <Card
               key={`${periodId || 'cumulative'}-${row.cashier_id}`}
-              href={withReturnTo(`/cashiers/${row.cashier_id}`, returnTo)}
-              className="block"
+              className="overflow-hidden p-0 transition-colors hover:bg-surface-100"
             >
-              <Card className="flex items-center gap-3 py-3 transition-colors hover:bg-surface-100">
-                <div className="relative h-[4.5rem] w-[4.5rem] shrink-0">
-                  <div
-                    className={cn(
-                      'rank-frame',
-                      row.rank === 1 && 'rank-frame-gold',
-                      row.rank === 2 && 'rank-frame-silver',
-                      row.rank === 3 && 'rank-frame-bronze'
-                    )}
-                  >
-                    <CashierAvatar name={row.name} src={row.avatar_url} size={56} />
-                  </div>
-                  <span
-                    className={cn(
-                      'absolute -bottom-1 -left-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-surface-50 px-1.5 text-xs font-bold shadow-sm',
-                      row.rank === 1 && 'bg-amber-300 text-amber-950',
-                      row.rank === 2 && 'bg-slate-300 text-slate-800',
-                      row.rank === 3 && 'bg-orange-400 text-orange-950',
-                      row.rank > 3 && 'bg-surface-100 text-surface-500'
-                    )}
-                  >
-                    {row.rank}
-                  </span>
-                  {row.rank <= 3 && (
+              <div className="flex items-stretch gap-3 p-3">
+                <Link
+                  href={withReturnTo(`/cashiers/${row.cashier_id}`, returnTo)}
+                  className="flex min-w-0 flex-1 items-center gap-3"
+                >
+                  <div className="relative h-[4.5rem] w-[4.5rem] shrink-0">
+                    <div
+                      className={cn(
+                        'rank-frame',
+                        row.rank === 1 && 'rank-frame-gold',
+                        row.rank === 2 && 'rank-frame-silver',
+                        row.rank === 3 && 'rank-frame-bronze'
+                      )}
+                    >
+                      <CashierAvatar name={row.name} src={row.avatar_url} size={56} />
+                    </div>
                     <span
                       className={cn(
-                        'absolute -right-2 -top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface-50 shadow-lg',
+                        'absolute -bottom-1 -left-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-surface-50 px-1.5 text-xs font-bold shadow-sm',
                         row.rank === 1 && 'bg-amber-300 text-amber-950',
                         row.rank === 2 && 'bg-slate-300 text-slate-800',
-                        row.rank === 3 && 'bg-orange-400 text-orange-950'
+                        row.rank === 3 && 'bg-orange-400 text-orange-950',
+                        row.rank > 3 && 'bg-surface-100 text-surface-500'
                       )}
-                      aria-label={`Peringkat ${row.rank}`}
                     >
-                      {row.rank === 1 ? (
-                        <Trophy className="h-4 w-4" aria-hidden="true" />
-                      ) : (
-                        <Medal className="h-4 w-4" aria-hidden="true" />
-                      )}
+                      {row.rank}
                     </span>
+                    {row.rank <= 3 && (
+                      <span
+                        className={cn(
+                          'absolute -right-2 -top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 border-surface-50 shadow-lg',
+                          row.rank === 1 && 'bg-amber-300 text-amber-950',
+                          row.rank === 2 && 'bg-slate-300 text-slate-800',
+                          row.rank === 3 && 'bg-orange-400 text-orange-950'
+                        )}
+                        aria-label={`Peringkat ${row.rank}`}
+                      >
+                        {row.rank === 1 ? (
+                          <Trophy className="h-4 w-4" aria-hidden="true" />
+                        ) : (
+                          <Medal className="h-4 w-4" aria-hidden="true" />
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-surface-900">{row.name}</p>
+                    <p className="truncate text-xs text-surface-500">
+                      {row.outlet_name} - {row.branch_name}
+                    </p>
+                  </div>
+                </Link>
+                <div className="flex shrink-0 flex-col items-end justify-center gap-2">
+                  <span className="text-sm font-bold text-primary-600">
+                    {formatScore(row.total_score)}
+                  </span>
+                  {row.indicator_scores.length > 0 && (
+                    <button
+                      type="button"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-surface-300 text-surface-500 transition-colors hover:border-primary-500 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                      onClick={() =>
+                        setExpandedCashierId((current) =>
+                          current === row.cashier_id ? null : row.cashier_id
+                        )
+                      }
+                      aria-expanded={expandedCashierId === row.cashier_id}
+                      aria-controls={`leaderboard-indicators-${row.cashier_id}`}
+                      aria-label={`${expandedCashierId === row.cashier_id ? 'Sembunyikan' : 'Lihat'} nilai indikator ${row.name}`}
+                      title={
+                        expandedCashierId === row.cashier_id
+                          ? 'Sembunyikan nilai indikator'
+                          : 'Lihat nilai indikator'
+                      }
+                    >
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 transition-transform',
+                          expandedCashierId === row.cashier_id && 'rotate-180'
+                        )}
+                        aria-hidden="true"
+                      />
+                    </button>
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-surface-900">{row.name}</p>
-                  <p className="truncate text-xs text-surface-500">
-                    {row.outlet_name} - {row.branch_name}
-                  </p>
+              </div>
+              {expandedCashierId === row.cashier_id && row.indicator_scores.length > 0 && (
+                <div
+                  id={`leaderboard-indicators-${row.cashier_id}`}
+                  className="border-t border-surface-200 px-3 pb-3 pt-3"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-surface-500">
+                      Nilai indikator
+                    </p>
+                    {mode === 'cumulative' && (
+                      <p className="text-[11px] text-surface-400">
+                        Referensi{' '}
+                        {periods.find((period) => period.id === periodId)?.label ??
+                          'periode terpilih'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+                    {row.indicator_scores.map((indicator) => (
+                      <div key={indicator.id} className="min-w-0">
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="truncate text-surface-600" title={indicator.name}>
+                            {indicator.name}
+                          </span>
+                          <span className="shrink-0 font-semibold text-surface-900">
+                            {formatScore(indicator.score)}
+                          </span>
+                        </div>
+                        <div
+                          className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-200"
+                          aria-hidden="true"
+                        >
+                          <div
+                            className="h-full rounded-full bg-primary-500 transition-[width]"
+                            style={{ width: `${indicator.score}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-sm font-bold text-primary-600">
-                  {formatScore(row.total_score)}
-                </span>
-              </Card>
-            </Link>
+              )}
+            </Card>
           ))}
 
           {loadingMore && (
@@ -446,7 +525,9 @@ export function LeaderboardView({
             </Button>
           )}
 
-          {!hasMore && <p className="py-3 text-center text-xs text-surface-400">Semua data telah dimuat.</p>}
+          {!hasMore && (
+            <p className="py-3 text-center text-xs text-surface-400">Semua data telah dimuat.</p>
+          )}
         </div>
       )}
     </div>

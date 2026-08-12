@@ -1,9 +1,4 @@
-export type UpdateCategory =
-  | 'added'
-  | 'changed'
-  | 'fixed'
-  | 'performance'
-  | 'security';
+export type UpdateCategory = 'added' | 'changed' | 'fixed' | 'performance' | 'security';
 
 export interface AppUpdateSection {
   category: UpdateCategory;
@@ -21,6 +16,30 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.3',
+    date: '2026-08-13',
+    title: 'Rincian indikator di leaderboard',
+    summary:
+      'Setiap card ranking kini dapat menampilkan nilai semua indikator dengan tampilan ringkas.',
+    sections: [
+      {
+        category: 'added',
+        label: 'Fitur Baru',
+        items: [
+          'Menambahkan kontrol ekspansi pada card leaderboard untuk melihat nilai setiap indikator.',
+          'Menambahkan bar visual untuk membantu membandingkan nilai indikator dengan cepat.',
+        ],
+      },
+      {
+        category: 'performance',
+        label: 'Performa',
+        items: [
+          'Rincian indikator menggunakan snapshot skor yang sama dengan skor total leaderboard.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.2',
     date: '2026-08-12',
     title: 'Penyederhanaan login',
@@ -37,7 +56,8 @@ export const appUpdates: AppUpdate[] = [
     version: '0.2.1',
     date: '2026-08-12',
     title: 'Penyederhanaan navigasi update',
-    summary: 'Akses Update Aplikasi kini dipusatkan melalui halaman About agar navigasi tidak ganda.',
+    summary:
+      'Akses Update Aplikasi kini dipusatkan melalui halaman About agar navigasi tidak ganda.',
     sections: [
       {
         category: 'changed',
@@ -50,7 +70,8 @@ export const appUpdates: AppUpdate[] = [
     version: '0.2.0',
     date: '2026-08-12',
     title: 'Navigasi dan transparansi update',
-    summary: 'Aplikasi kini memiliki halaman khusus untuk mengikuti perkembangan fitur dan perbaikan.',
+    summary:
+      'Aplikasi kini memiliki halaman khusus untuk mengikuti perkembangan fitur dan perbaikan.',
     sections: [
       {
         category: 'added',
@@ -71,7 +92,9 @@ export const appUpdates: AppUpdate[] = [
       {
         category: 'performance',
         label: 'Performa',
-        items: ['Navigasi Pendampingan menggunakan prefetch untuk perpindahan yang lebih responsif.'],
+        items: [
+          'Navigasi Pendampingan menggunakan prefetch untuk perpindahan yang lebih responsif.',
+        ],
       },
       {
         category: 'fixed',
