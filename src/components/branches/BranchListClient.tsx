@@ -78,7 +78,7 @@ export function BranchListClient({
     },
     [initialResult.pageSize]
   );
-  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
+  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isFetching, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
   const returnTo = useCurrentReturnTo();
 
@@ -107,7 +107,7 @@ export function BranchListClient({
       </div>
 
       <div className="mt-2 min-h-5 text-xs text-surface-500" aria-live="polite">
-        {isPending && 'Memuat hasil terbaru...'}
+        {isFetching && 'Memuat hasil terbaru...'}
         {error && (
           <span className="text-danger-600">
             {error}{' '}
@@ -118,7 +118,7 @@ export function BranchListClient({
         )}
       </div>
 
-      <div className="mt-2 space-y-3" aria-busy={isPending}>
+      <div className="mt-2 space-y-3" aria-busy={isFetching}>
         {result.items.map((branch) => (
           <NavigationLink
             key={branch.id}

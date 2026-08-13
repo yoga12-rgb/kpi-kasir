@@ -73,7 +73,7 @@ export function OutletCashierListClient({
     },
     [initialResult.pageSize, outletId]
   );
-  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
+  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isFetching, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
   const returnTo = useCurrentReturnTo();
 
@@ -90,7 +90,7 @@ export function OutletCashierListClient({
         />
       </div>
       <div className="mb-2 min-h-5 text-xs text-surface-500" aria-live="polite">
-        {isPending && 'Memuat hasil terbaru...'}
+        {isFetching && 'Memuat hasil terbaru...'}
         {error && (
           <span className="text-danger-600">
             {error}{' '}
@@ -100,7 +100,7 @@ export function OutletCashierListClient({
           </span>
         )}
       </div>
-      <div className="space-y-2" aria-busy={isPending}>
+      <div className="space-y-2" aria-busy={isFetching}>
         {result.items.map((cashier) => (
           <Link
             key={cashier.id}

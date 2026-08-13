@@ -36,4 +36,6 @@ async function handlePOST(request: Request) {
 }
 
 export const GET = withApiRoute(handleGET);
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'category-create', limit: 30, windowMs: 10 * 60_000 },
+});

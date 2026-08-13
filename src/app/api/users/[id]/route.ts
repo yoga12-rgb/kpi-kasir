@@ -61,4 +61,6 @@ async function handlePATCH(
   return NextResponse.json({ user: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'user-write', limit: 30, windowMs: 10 * 60_000 },
+});

@@ -67,9 +67,6 @@ async function handlePOST(request: Request) {
     }
     console.error('[branches] insert failed', {
       code: error.code,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
     });
     return NextResponse.json({ error: 'Cabang tidak dapat disimpan' }, { status: 500 });
   }
@@ -78,4 +75,6 @@ async function handlePOST(request: Request) {
 }
 
 export const GET = withApiRoute(handleGET);
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'branch-create', limit: 30, windowMs: 10 * 60_000 },
+});

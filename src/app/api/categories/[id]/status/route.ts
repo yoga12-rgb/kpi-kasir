@@ -31,4 +31,6 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({ category: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'category-status', limit: 30, windowMs: 10 * 60_000 },
+});

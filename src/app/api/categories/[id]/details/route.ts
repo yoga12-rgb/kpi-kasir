@@ -69,4 +69,6 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export const GET = withApiRoute(handleGET);
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'detail-create', limit: 60, windowMs: 10 * 60_000 },
+});

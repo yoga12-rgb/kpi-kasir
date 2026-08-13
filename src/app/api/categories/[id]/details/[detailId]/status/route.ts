@@ -48,4 +48,6 @@ async function handlePATCH(
   return NextResponse.json({ detail: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'detail-write', limit: 60, windowMs: 10 * 60_000 },
+});

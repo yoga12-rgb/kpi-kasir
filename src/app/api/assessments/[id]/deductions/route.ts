@@ -82,4 +82,6 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ deduction: data }, { status: 201 });
 }
 
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'deduction-write', limit: 60, windowMs: 10 * 60_000 },
+});

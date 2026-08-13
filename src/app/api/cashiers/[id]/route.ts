@@ -53,5 +53,9 @@ async function handleDELETE(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ cashier: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
-export const DELETE = withApiRoute(handleDELETE);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'cashier-write', limit: 60, windowMs: 10 * 60_000 },
+});
+export const DELETE = withApiRoute(handleDELETE, {
+  rateLimit: { name: 'cashier-write', limit: 30, windowMs: 10 * 60_000 },
+});

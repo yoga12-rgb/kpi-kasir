@@ -71,5 +71,9 @@ async function handleDELETE(request: Request, { params }: { params: Promise<{ id
   return NextResponse.json({ branch: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
-export const DELETE = withApiRoute(handleDELETE);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'branch-write', limit: 30, windowMs: 10 * 60_000 },
+});
+export const DELETE = withApiRoute(handleDELETE, {
+  rateLimit: { name: 'branch-write', limit: 30, windowMs: 10 * 60_000 },
+});

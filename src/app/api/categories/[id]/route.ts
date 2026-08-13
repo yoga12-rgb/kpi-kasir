@@ -45,5 +45,9 @@ async function handleDELETE(_request: Request, { params }: { params: Promise<{ i
   return NextResponse.json({ category: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
-export const DELETE = withApiRoute(handleDELETE);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'category-write', limit: 30, windowMs: 10 * 60_000 },
+});
+export const DELETE = withApiRoute(handleDELETE, {
+  rateLimit: { name: 'category-write', limit: 30, windowMs: 10 * 60_000 },
+});

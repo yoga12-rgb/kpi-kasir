@@ -57,6 +57,45 @@ function safeMessage(message: string, status: number) {
   return message;
 }
 
+function isMutationMethod(method: string) {
+  return method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
+}
+
+function getAllowedOrigins() {
+  return (process.env.APP_ORIGIN_ALLOWLIST ?? process.env.NEXT_PUBLIC_APP_URL ?? '')
+    .split(',')
+    .map((value) => value.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
+
+/**
+ * Proteksi CSRF untuk request mutasi berbasis cookie session. Request browser
+ * same-origin selalu menyertakan header `Origin`; request lintas-situs (CSRF)
+ * akan memiliki `Origin` dari domain asing dan ditolak. Request tanpa `Origin`
+ * (tool non-browser / server-to-server) dibiarkan lewat karena tidak membawa
+ * cookie session browser.
+ */
+function isAllowedOrigin(request: Request) {
+  const allowed = getAllowedOrigins();
+  if (allowed.length === 0) return true;
+
+  const origin = request.headers.get('origin')?.trim();
+  const referer = request.headers.get('referer')?.trim();
+  let refererOrigin: string | null = null;
+  if (referer) {
+    try {
+      refererOrigin = new URL(referer).origin;
+    } catch {
+      refererOrigin = null;
+    }
+  }
+
+  const candidate = (origin || refererOrigin || '').replace(/\/$/, '');
+  if (!candidate) return true;
+
+  return allowed.includes(candidate);
+}
+
 async function normalizeResponse(response: Response, id: string) {
   const headers = new Headers(response.headers);
   headers.set('x-request-id', id);
@@ -146,6 +185,12 @@ export function withApiRoute(
           );
         }
         identity = user.profile.id;
+      }
+      if (!options.publicRoute && isMutationMethod(request.method) && !isAllowedOrigin(request)) {
+        return withServerTiming(
+          errorResponse(request, 'FORBIDDEN', 'Origin tidak diizinkan', 403, id),
+          startedAt
+        );
       }
       if (options.rateLimit) {
         const rate = checkRateLimit(request, options.rateLimit, identity);

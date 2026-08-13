@@ -137,7 +137,7 @@ export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlLis
     submitSearch,
     goToPage,
     replaceParams,
-    isPending: query.isFetching,
+    isFetching: query.isFetching,
     error: query.error?.message ?? null,
     retry,
   };

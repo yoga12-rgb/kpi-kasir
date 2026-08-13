@@ -47,9 +47,6 @@ function logSetupError(stage: string, error: unknown) {
         typeof value.status === 'number' || typeof value.status === 'string'
           ? value.status
           : null,
-      message: typeof value.message === 'string' ? value.message : 'Unknown remote error',
-      details: typeof value.details === 'string' ? value.details : null,
-      hint: typeof value.hint === 'string' ? value.hint : null,
     },
   });
 }

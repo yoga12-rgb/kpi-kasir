@@ -16,6 +16,32 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.4',
+    date: '2026-08-13',
+    title: 'Penguatan keamanan aplikasi',
+    summary:
+      'Menambahkan proteksi origin, batas laju pada mutasi data, serta penguatan kebijakan keamanan.',
+    sections: [
+      {
+        category: 'security',
+        label: 'Keamanan',
+        items: [
+          'Menambahkan proteksi origin untuk menangkal permintaan mutasi lintas-situs.',
+          'Menerapkan batas laju pada endpoint mutasi data sensitif.',
+          'Memperketat Content-Security-Policy dan membatasi hostname gambar.',
+          'Menyaring detail error internal agar tidak tercatat ke log server.',
+        ],
+      },
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Indikator loading daftar tidak lagi berkedip saat data lama masih valid.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.3',
     date: '2026-08-13',
     title: 'Rincian indikator di leaderboard',

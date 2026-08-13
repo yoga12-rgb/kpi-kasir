@@ -61,4 +61,6 @@ async function handlePATCH(request: Request) {
 }
 
 export const GET = withApiRoute(handleGET);
-export const PATCH = withApiRoute(handlePATCH);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'role-permission-write', limit: 60, windowMs: 10 * 60_000 },
+});

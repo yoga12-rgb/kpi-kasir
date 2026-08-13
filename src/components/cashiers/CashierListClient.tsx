@@ -110,7 +110,7 @@ export function CashierListClient({
     submitSearch,
     goToPage,
     replaceParams,
-    isPending,
+    isFetching,
     error,
     retry,
   } = useUrlList({ initialResult, queryKeys, fetchPage });
@@ -149,7 +149,7 @@ export function CashierListClient({
       </div>
 
       <div className="mt-2 min-h-5 text-xs text-surface-500" aria-live="polite">
-        {isPending && 'Memuat hasil terbaru...'}
+        {isFetching && 'Memuat hasil terbaru...'}
         {error && (
           <span className="text-danger-600">
             {error}{' '}
@@ -160,7 +160,7 @@ export function CashierListClient({
         )}
       </div>
 
-      <div className="mt-2 space-y-2 transition-opacity duration-150" aria-busy={isPending}>
+      <div className="mt-2 space-y-2 transition-opacity duration-150" aria-busy={isFetching}>
         {result.items.map((cashier) => (
           <NavigationLink
             key={cashier.id}

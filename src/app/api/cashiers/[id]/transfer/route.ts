@@ -35,4 +35,6 @@ async function handlePOST(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ cashier: data });
 }
 
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'cashier-transfer', limit: 20, windowMs: 10 * 60_000 },
+});

@@ -36,4 +36,6 @@ async function handlePOST(
   return NextResponse.json({ roster: data }, { status: 201 });
 }
 
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'period-roster', limit: 60, windowMs: 10 * 60_000 },
+});

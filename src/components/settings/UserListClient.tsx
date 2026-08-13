@@ -50,7 +50,7 @@ export function UserListClient({
     },
     [initialResult.pageSize]
   );
-  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isPending, error, retry } =
+  const { result, draftQuery, setDraftQuery, submitSearch, goToPage, isFetching, error, retry } =
     useUrlList({ initialResult, queryKeys: QUERY_KEYS, fetchPage });
 
   return (
@@ -66,7 +66,7 @@ export function UserListClient({
         />
       </div>
       <div className="mb-2 min-h-5 text-xs text-surface-500" aria-live="polite">
-        {isPending && 'Memuat hasil terbaru...'}
+        {isFetching && 'Memuat hasil terbaru...'}
         {error && (
           <span className="text-danger-600">
             {error}{' '}
@@ -76,7 +76,7 @@ export function UserListClient({
           </span>
         )}
       </div>
-      <div aria-busy={isPending}>
+      <div aria-busy={isFetching}>
         <UserManagementList initialUsers={result.items} currentUserId={currentUserId} />
       </div>
       <ClientPagination page={result.page} totalPages={result.totalPages} onPageChange={goToPage} />

@@ -44,4 +44,6 @@ async function handleDELETE(_request: Request, { params }: { params: Promise<{ i
   return NextResponse.json({ success: true });
 }
 
-export const DELETE = withApiRoute(handleDELETE);
+export const DELETE = withApiRoute(handleDELETE, {
+  rateLimit: { name: 'deduction-write', limit: 60, windowMs: 10 * 60_000 },
+});

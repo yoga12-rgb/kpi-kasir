@@ -150,5 +150,9 @@ async function handlePATCH(request: Request) {
   return handlePOST(request);
 }
 
-export const POST = withApiRoute(handlePOST);
-export const PATCH = withApiRoute(handlePATCH);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'assessment-write', limit: 120, windowMs: 10 * 60_000 },
+});
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'assessment-write', limit: 120, windowMs: 10 * 60_000 },
+});

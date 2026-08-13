@@ -32,4 +32,6 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
   return NextResponse.json({ cashier: data });
 }
 
-export const PATCH = withApiRoute(handlePATCH);
+export const PATCH = withApiRoute(handlePATCH, {
+  rateLimit: { name: 'cashier-status', limit: 30, windowMs: 10 * 60_000 },
+});

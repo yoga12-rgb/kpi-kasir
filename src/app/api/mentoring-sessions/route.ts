@@ -180,4 +180,6 @@ async function handlePOST(request: Request) {
 }
 
 export const GET = withApiRoute(handleGET);
-export const POST = withApiRoute(handlePOST);
+export const POST = withApiRoute(handlePOST, {
+  rateLimit: { name: 'mentoring-write', limit: 60, windowMs: 10 * 60_000 },
+});
