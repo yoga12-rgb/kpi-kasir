@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { EmptyState } from '@/components/ui/Feedback';
 import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import { requirePermission } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -143,9 +144,10 @@ export default async function AssessmentPage() {
             );
           })}
           {(cashiers ?? []).length === 0 && (
-            <p className="py-8 text-center text-sm text-surface-500">
-              Tidak ada kasir pada cabang yang kamu kelola.
-            </p>
+            <EmptyState
+              title="Belum ada kasir"
+              description="Tidak ada kasir aktif pada cabang yang kamu kelola."
+            />
           )}
         </div>
     </div>

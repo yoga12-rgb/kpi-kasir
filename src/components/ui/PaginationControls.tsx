@@ -45,7 +45,11 @@ export function PaginationControls({
       ) : (
         <span className="h-9 w-9" aria-hidden="true" />
       )}
-      <span className="text-xs font-medium text-surface-500" aria-live="polite">
+      <span
+        className="text-xs font-medium text-surface-500"
+        aria-live="polite"
+        aria-current="page"
+      >
         {page} / {totalPages}
       </span>
       {page < totalPages ? (

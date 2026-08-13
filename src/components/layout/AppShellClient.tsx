@@ -82,6 +82,12 @@ export function AppShellClient({
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-app flex-col border-x border-surface-200 bg-surface-50 md:max-w-7xl md:flex-row">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[80] focus:rounded-lg focus:bg-primary-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+      >
+        Lewati ke konten
+      </a>
       <aside
         aria-label="Sidebar aplikasi"
         className="hidden shrink-0 border-r border-surface-200 bg-white md:sticky md:top-0 md:flex md:h-dvh md:w-60 md:flex-col md:self-start md:overflow-hidden"
@@ -135,6 +141,7 @@ export function AppShellClient({
         </header>
 
         <main
+          id="main-content"
           data-page-content
           className="min-w-0 flex-1 pb-[calc(var(--mobile-nav-height)+var(--mobile-nav-lift)+env(safe-area-inset-bottom))] md:pb-8"
         >

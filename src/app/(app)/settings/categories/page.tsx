@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
 import { CategoryForm } from '@/components/categories/CategoryForm';
 import { requireRole } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
@@ -105,11 +106,14 @@ export default async function CategoriesPage({
           </NavigationLink>
         ))}
         {(categories ?? []).length === 0 && (
-          <p className="py-6 text-center text-sm text-surface-500">
-            {status === 'active'
-              ? 'Belum ada indikator aktif. Tambahkan indikator pertama.'
-              : 'Belum ada indikator yang diarsipkan.'}
-          </p>
+          <EmptyState
+            title={status === 'active' ? 'Belum ada indikator aktif' : 'Belum ada indikator diarsipkan'}
+            description={
+              status === 'active'
+                ? 'Tambahkan indikator pertama untuk mulai menyusun penilaian.'
+                : undefined
+            }
+          />
         )}
       </div>
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.5] - 2026-08-13
+
+### Fixed
+
+- Menambahkan focus trap, kunci scroll, dan label aksesibel pada Bottom Sheet agar setara dengan modal.
+- Menambahkan tautan "Lewati ke konten" untuk navigasi keyboard di seluruh halaman aplikasi.
+- Menandai halaman aktif pada kontrol pagination dengan `aria-current`.
+- Menyeragamkan tampilan empty state pada daftar kasir, cabang, outlet, dan indikator penilaian.
+
 ## [0.2.4] - 2026-08-13
 
 ### Security

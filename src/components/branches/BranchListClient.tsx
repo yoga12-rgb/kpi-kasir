@@ -8,6 +8,7 @@ import { SearchField } from '@/components/search/SearchField';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { NavigationLink } from '@/components/ui/NavigationLink';
+import { EmptyState } from '@/components/ui/Feedback';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { withReturnTo } from '@/lib/navigation';
@@ -144,7 +145,7 @@ export function BranchListClient({
           </NavigationLink>
         ))}
         {result.items.length === 0 && (
-          <p className="py-8 text-center text-sm text-surface-500">Belum ada cabang.</p>
+          <EmptyState title="Belum ada cabang" description="Tambahkan cabang pertama untuk memulai." />
         )}
       </div>
 

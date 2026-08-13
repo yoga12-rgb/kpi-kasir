@@ -6,6 +6,7 @@ import { ClientPagination } from '@/components/search/ClientPagination';
 import { SearchField } from '@/components/search/SearchField';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { withReturnTo } from '@/lib/navigation';
@@ -123,7 +124,9 @@ export function BranchOutletListClient({
             </Card>
           </Link>
         ))}
-        {result.items.length === 0 && <p className="text-sm text-surface-500">Belum ada outlet.</p>}
+        {result.items.length === 0 && (
+          <EmptyState title="Belum ada outlet" description="Tambahkan outlet pada cabang ini." />
+        )}
       </div>
       <ClientPagination page={result.page} totalPages={result.totalPages} onPageChange={goToPage} />
     </>

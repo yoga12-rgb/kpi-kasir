@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ClientPagination } from '@/components/search/ClientPagination';
 import { SearchField } from '@/components/search/SearchField';
 import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/Feedback';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { withReturnTo } from '@/lib/navigation';
@@ -121,7 +122,7 @@ export function OutletCashierListClient({
           </Link>
         ))}
         {result.items.length === 0 && (
-          <p className="text-sm text-surface-500">Belum ada kasir aktif.</p>
+          <EmptyState title="Belum ada kasir aktif" description="Tidak ada kasir pada outlet ini." />
         )}
       </div>
       <ClientPagination page={result.page} totalPages={result.totalPages} onPageChange={goToPage} />

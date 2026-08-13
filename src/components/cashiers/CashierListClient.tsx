@@ -9,6 +9,7 @@ import { SearchField } from '@/components/search/SearchField';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { NavigationLink } from '@/components/ui/NavigationLink';
+import { EmptyState } from '@/components/ui/Feedback';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { withReturnTo } from '@/lib/navigation';
 import { useUrlList, type PagedResult } from '@/lib/client/use-url-list';
@@ -188,7 +189,7 @@ export function CashierListClient({
           </NavigationLink>
         ))}
         {result.items.length === 0 && (
-          <p className="py-8 text-center text-sm text-surface-500">Belum ada kasir.</p>
+          <EmptyState title="Belum ada kasir" description="Tidak ada kasir pada filter ini." />
         )}
       </div>
 

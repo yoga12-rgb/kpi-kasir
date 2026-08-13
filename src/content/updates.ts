@@ -16,6 +16,25 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.5',
+    date: '2026-08-13',
+    title: 'Peningkatan aksesibilitas dan konsistensi tampilan',
+    summary:
+      'Memperbaiki navigasi keyboard, fokus pada sheet, dan konsistensi state kosong di seluruh daftar.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Bottom Sheet kini memiliki focus trap, kunci scroll, dan label aksesibel.',
+          'Menambahkan tautan "Lewati ke konten" untuk navigasi keyboard.',
+          'Menandai halaman aktif pada pagination dengan penanda aksesibel.',
+          'Menyeragamkan tampilan empty state di kasir, cabang, outlet, dan indikator penilaian.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.4',
     date: '2026-08-13',
     title: 'Penguatan keamanan aplikasi',
