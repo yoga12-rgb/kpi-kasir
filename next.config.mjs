@@ -28,7 +28,7 @@ const nextConfig = {
     const isDevelopment = process.env.NODE_ENV !== 'production';
     const contentSecurityPolicy = [
       "default-src 'self'",
-      `script-src 'self'${isDevelopment ? " 'unsafe-inline' 'unsafe-eval'" : ''}`,
+      `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "font-src 'self' data:",
       "img-src 'self' data: blob: https: http://localhost:55421 http://127.0.0.1:55421",

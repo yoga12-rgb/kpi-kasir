@@ -28,8 +28,7 @@ export const appUpdates: AppUpdate[] = [
         items: [
           'Menambahkan proteksi origin untuk menangkal permintaan mutasi lintas-situs.',
           'Menerapkan batas laju pada endpoint mutasi data sensitif.',
-          'Memperketat Content-Security-Policy dan membatasi hostname gambar.',
-          'Menyaring detail error internal agar tidak tercatat ke log server.',
+          'Membatasi hostname gambar dan menyaring detail error internal dari log server.',
         ],
       },
       {

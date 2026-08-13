@@ -7,7 +7,6 @@
 - Menambahkan proteksi origin untuk request mutasi API guna menangkal CSRF lintas-situs.
 - Menerapkan batas laju (rate limit) pada seluruh endpoint mutasi data sensitif.
 - Membatasi pertumbuhan store rate limiter in-memory agar tidak memicu masalah memori.
-- Memperketat Content-Security-Policy (menghapus `unsafe-inline` untuk skrip di produksi).
 - Membatasi daftar hostname gambar pada `next/image` dan menyaring detail error internal dari log server.
 
 ### Fixed

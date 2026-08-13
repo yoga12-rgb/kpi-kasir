@@ -125,15 +125,19 @@ serverless/multi-instance dan terhadap CSRF.
 
 #### 3.1.1 — Perketat CSP (S4)
 
-1. Hapus `'unsafe-inline'` dari `script-src` jika aplikasi tidak bergantung inline script;
-   pertahankan `'unsafe-inline'` hanya pada `style-src` bila diperlukan oleh Tailwind/emotion.
-2. Tambahkan nonce/hash bila inline script benar-benar diperlukan (dokumentasikan alasannya).
-3. Verifikasi tidak ada inline `<script>` di JSX (hasil audit tidak menemukan).
+> **Catatan penting (2026-08-13):** menghapus `'unsafe-inline'` dari `script-src` pada produksi
+> memutus render klien Next.js App Router (flight/hydration script memerlukan inline). Halaman
+> hanya menampilkan skeleton `loading.tsx` sampai mekanisme nonce/hash diterapkan. Perbaikan ini
+> **ditunda** sampai `proxy.ts`/`next.config.mjs` menyediakan CSP nonce.
+
+1. Jangan hapus `'unsafe-inline'` dari `script-src` dahulu.
+2. Terapkan CSP nonce via `proxy.ts`: set nonce per request + inject ke `next.config.mjs` headers.
+3. Setelah nonce stabil, hapus `'unsafe-inline'` dari `script-src` dan verifikasi hydrate di Chrome & Safari.
 
 **Acceptance criteria:**
 
-- `script-src` tidak lagi memuat `'unsafe-inline'` tanpa pengecualian yang terdokumentasi.
-- Build production dan smoke test tetap jalan di Chrome dan Safari.
+- `script-src` memakai nonce per request, tanpa `'unsafe-inline'` di produksi.
+- Build production dan smoke test tetap jalan di Chrome dan Safari (dashboard tidak stuck skeleton).
 
 #### 3.1.2 — Batasi `remotePatterns` gambar (S5)
 
