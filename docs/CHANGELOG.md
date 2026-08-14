@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.19] - 2026-08-14
+
+### Added
+
+- Menambahkan pencarian, filter status, cabang, dan outlet pada daftar Penilaian.
+- Menambahkan pagination Penilaian agar daftar kasir besar dimuat bertahap.
+
+### Changed
+
+- Daftar Penilaian secara default menampilkan kasir yang masih perlu dinilai.
+- Filter Pendampingan baru diterapkan sekali saat tombol Terapkan ditekan.
+- Filter Peringkat kini dipertahankan pada URL; Reset juga mengembalikan periode awal.
+
+### Performance
+
+- Memindahkan filter Penilaian ke server agar halaman tidak lagi memuat seluruh kasir dalam satu request.
+
 ## [0.2.18] - 2026-08-14
 
 ### Changed

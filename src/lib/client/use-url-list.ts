@@ -1,6 +1,6 @@
 'use client';
 
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { appQueryKeys } from '@/lib/client/query-keys';
@@ -17,6 +17,7 @@ interface UseUrlListOptions<T> {
   initialResult: PagedResult<T>;
   queryKeys: string[];
   fetchPage: (params: URLSearchParams, signal: AbortSignal) => Promise<PagedResult<T>>;
+  queryKeyFactory?: (pathname: string, filters: readonly string[]) => QueryKey;
 }
 
 function getUrlKey(params: URLSearchParams, queryKeys: string[]) {
@@ -28,32 +29,32 @@ function toPath(pathname: string, params: URLSearchParams) {
   return query ? `${pathname}?${query}` : pathname;
 }
 
-export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlListOptions<T>) {
+export function useUrlList<T>({
+  initialResult,
+  queryKeys,
+  fetchPage,
+  queryKeyFactory,
+}: UseUrlListOptions<T>) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const routerQueryString = searchParams.toString();
   const [localQueryString, setLocalQueryString] = useState(routerQueryString);
   const queryClient = useQueryClient();
-  const [initialKey] = useState(() =>
-    getUrlKey(new URLSearchParams(routerQueryString), queryKeys)
-  );
+  const [initialKey] = useState(() => getUrlKey(new URLSearchParams(routerQueryString), queryKeys));
   const initialSignature = useMemo(() => JSON.stringify(initialResult), [initialResult]);
   const lastInitialSignatureRef = useRef(initialSignature);
-  const currentParams = useMemo(
-    () => new URLSearchParams(localQueryString),
-    [localQueryString]
-  );
-  const currentKey = useMemo(
-    () => getUrlKey(currentParams, queryKeys),
+  const currentParams = useMemo(() => new URLSearchParams(localQueryString), [localQueryString]);
+  const currentKey = useMemo(() => getUrlKey(currentParams, queryKeys), [currentParams, queryKeys]);
+  const filterValues = useMemo(
+    () => queryKeys.map((key) => `${key}=${currentParams.get(key) ?? ''}`),
     [currentParams, queryKeys]
   );
   const queryKey = useMemo(
     () =>
-      appQueryKeys.urlList(
-        pathname,
-        queryKeys.map((key) => `${key}=${currentParams.get(key) ?? ''}`)
-      ),
-    [currentParams, pathname, queryKeys]
+      queryKeyFactory
+        ? queryKeyFactory(pathname, filterValues)
+        : appQueryKeys.urlList(pathname, filterValues),
+    [filterValues, pathname, queryKeyFactory]
   );
 
   useEffect(() => {
@@ -140,5 +141,6 @@ export function useUrlList<T>({ initialResult, queryKeys, fetchPage }: UseUrlLis
     isFetching: query.isFetching,
     error: query.error?.message ?? null,
     retry,
+    currentQueryString: localQueryString,
   };
 }

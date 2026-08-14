@@ -195,6 +195,7 @@ export function AssessmentForm({
     void invalidateAppQueries(queryClient, [
       appQueryKeys.leaderboardRoot,
       appQueryKeys.cashierTabsRoot,
+      appQueryKeys.assessmentListRoot,
     ]);
     router.refresh();
 
@@ -241,6 +242,7 @@ export function AssessmentForm({
         void invalidateAppQueries(queryClient, [
           appQueryKeys.leaderboardRoot,
           appQueryKeys.cashierTabsRoot,
+          appQueryKeys.assessmentListRoot,
         ]);
         router.refresh();
         return;
@@ -264,6 +266,7 @@ export function AssessmentForm({
       void invalidateAppQueries(queryClient, [
         appQueryKeys.leaderboardRoot,
         appQueryKeys.cashierTabsRoot,
+        appQueryKeys.assessmentListRoot,
       ]);
       router.refresh();
     } catch (err) {
@@ -290,6 +293,7 @@ export function AssessmentForm({
       void invalidateAppQueries(queryClient, [
         appQueryKeys.leaderboardRoot,
         appQueryKeys.cashierTabsRoot,
+        appQueryKeys.assessmentListRoot,
       ]);
       router.refresh();
     } catch (err) {

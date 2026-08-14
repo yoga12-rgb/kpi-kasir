@@ -16,6 +16,39 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.19',
+    date: '2026-08-14',
+    title: 'Antrean penilaian dan filter yang konsisten',
+    summary:
+      'Penilaian kini lebih mudah diprioritaskan, sementara filter Peringkat dan Pendampingan mempertahankan konteks dengan lebih konsisten.',
+    sections: [
+      {
+        category: 'added',
+        label: 'Fitur Baru',
+        items: [
+          'Menambahkan pencarian, filter status, cabang, dan outlet pada daftar Penilaian.',
+          'Menambahkan pagination Penilaian agar daftar besar dimuat bertahap.',
+        ],
+      },
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Daftar Penilaian kini secara default menampilkan kasir yang masih perlu dinilai.',
+          'Filter Pendampingan diterapkan sekaligus melalui tombol Terapkan.',
+          'Filter Peringkat tersimpan pada URL dan Reset juga mengembalikan periode awal.',
+        ],
+      },
+      {
+        category: 'performance',
+        label: 'Performa',
+        items: [
+          'Filter Penilaian diproses di server sehingga tidak lagi memuat seluruh kasir sekaligus.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.18',
     date: '2026-08-14',
     title: 'Card pendampingan lebih informatif',

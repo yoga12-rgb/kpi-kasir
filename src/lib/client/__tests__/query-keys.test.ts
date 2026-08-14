@@ -16,13 +16,19 @@ describe('application query keys', () => {
     const queryClient = new QueryClient();
     const cashierKey = appQueryKeys.urlList('/cashiers', ['q=', 'page=']);
     const leaderboardKey = appQueryKeys.leaderboard('global', 'period', 'period-1', '', '', '');
+    const assessmentKey = appQueryKeys.assessmentList(['status=pending', 'page=1']);
 
     queryClient.setQueryData(cashierKey, { items: [] });
     queryClient.setQueryData(leaderboardKey, { pages: [], pageParams: [] });
+    queryClient.setQueryData(assessmentKey, { items: [] });
 
-    await invalidateAppQueries(queryClient, [appQueryKeys.urlLists]);
+    await invalidateAppQueries(queryClient, [
+      appQueryKeys.urlLists,
+      appQueryKeys.assessmentListRoot,
+    ]);
 
     expect(queryClient.getQueryState(cashierKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(leaderboardKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(assessmentKey)?.isInvalidated).toBe(true);
   });
 });

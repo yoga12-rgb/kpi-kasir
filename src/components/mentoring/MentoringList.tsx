@@ -2,9 +2,17 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Calendar, ChevronRight, Images, RotateCcw, SlidersHorizontal, UserRound, Users } from 'lucide-react';
+import {
+  Calendar,
+  ChevronRight,
+  Images,
+  RotateCcw,
+  SlidersHorizontal,
+  UserRound,
+  Users,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
@@ -36,11 +44,30 @@ interface Filters {
   to: string;
 }
 
+const emptyFilters: Filters = {
+  branchId: '',
+  outletId: '',
+  from: '',
+  to: '',
+};
+
+function getFiltersFromSearchParams(searchParams: URLSearchParams): Filters {
+  return {
+    branchId: searchParams.get('branchId') ?? '',
+    outletId: searchParams.get('outletId') ?? '',
+    from: searchParams.get('from') ?? '',
+    to: searchParams.get('to') ?? '',
+  };
+}
+
 interface MentoringSessionItem {
   id: string;
   visited_date: string;
   note_outlet: string | null;
-  outlet: { name?: string; branch_id?: string; branch?: { name?: string | null } | null } | { name?: string }[] | null;
+  outlet:
+    | { name?: string; branch_id?: string; branch?: { name?: string | null } | null }
+    | { name?: string }[]
+    | null;
   conducted_by: { full_name?: string } | { full_name?: string }[] | null;
   mentoring_cashier_note?: { count?: number } | { count?: number }[];
   mentoring_evidence?: { count?: number } | { count?: number }[];
@@ -115,36 +142,32 @@ export function MentoringList({
   outlets: OutletOption[];
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
   const returnTo = useCurrentReturnTo();
-  const [filters, setFilters] = useState<Filters>(() => ({
-    branchId: searchParams.get('branchId') ?? '',
-    outletId: searchParams.get('outletId') ?? '',
-    from: searchParams.get('from') ?? '',
-    to: searchParams.get('to') ?? '',
-  }));
+  const initialFilters = getFiltersFromSearchParams(new URLSearchParams(queryString));
+  const [filters, setFilters] = useState<Filters>(() => initialFilters);
+  const [draftFilters, setDraftFilters] = useState<Filters>(() => initialFilters);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
-    setFilters({
-      branchId: searchParams.get('branchId') ?? '',
-      outletId: searchParams.get('outletId') ?? '',
-      from: searchParams.get('from') ?? '',
-      to: searchParams.get('to') ?? '',
-    });
-  }, [searchParams]);
+    const nextFilters = getFiltersFromSearchParams(new URLSearchParams(queryString));
+    setFilters(nextFilters);
+    setDraftFilters(nextFilters);
+  }, [queryString]);
 
   const visibleOutlets = useMemo(
     () =>
-      filters.branchId
-        ? outlets.filter((outlet) => outlet.branch_id === filters.branchId)
+      draftFilters.branchId
+        ? outlets.filter((outlet) => outlet.branch_id === draftFilters.branchId)
         : outlets,
-    [filters.branchId, outlets]
+    [draftFilters.branchId, outlets]
   );
 
   const dateRangeError = filters.from && filters.to && filters.from > filters.to;
+  const draftDateRangeError =
+    draftFilters.from && draftFilters.to && draftFilters.from > draftFilters.to;
 
   const mentoringQuery = useInfiniteQuery<SessionsResponse, Error>({
     queryKey: appQueryKeys.mentoringSessions(
@@ -153,8 +176,7 @@ export function MentoringList({
       filters.from,
       filters.to
     ),
-    queryFn: ({ pageParam, signal }) =>
-      fetchSessions(filters, pageParam as string | null, signal),
+    queryFn: ({ pageParam, signal }) => fetchSessions(filters, pageParam as string | null, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) =>
       lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
@@ -199,20 +221,30 @@ export function MentoringList({
   }, [error, hasMore, loadMore, loading, loadingMore]);
 
   function resetFilters() {
-    setFilters({ branchId: '', outletId: '', from: '', to: '' });
-    router.replace(pathname);
+    commitFilters(emptyFilters);
   }
 
-  function updateFilters(nextFilters: Filters) {
+  function commitFilters(nextFilters: Filters) {
     setFilters(nextFilters);
-    router.replace(
-      buildPath(pathname, {
-        branchId: nextFilters.branchId,
-        outletId: nextFilters.outletId,
-        from: nextFilters.from,
-        to: nextFilters.to,
-      })
-    );
+    setDraftFilters(nextFilters);
+    const nextPath = buildPath(pathname, {
+      branchId: nextFilters.branchId,
+      outletId: nextFilters.outletId,
+      from: nextFilters.from,
+      to: nextFilters.to,
+    });
+    window.history.replaceState(null, '', nextPath);
+  }
+
+  function openFilterSheet() {
+    setDraftFilters(filters);
+    setSheetOpen(true);
+  }
+
+  function applyFilters() {
+    if (draftDateRangeError) return;
+    commitFilters(draftFilters);
+    setSheetOpen(false);
   }
 
   function retry() {
@@ -235,7 +267,7 @@ export function MentoringList({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => setSheetOpen(true)}
+          onClick={openFilterSheet}
           aria-haspopup="dialog"
           className={cn(
             'flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium',
@@ -267,9 +299,7 @@ export function MentoringList({
       </div>
 
       {dateRangeError && (
-        <p className="text-xs text-danger-600">
-          Tanggal mulai tidak boleh setelah tanggal akhir.
-        </p>
+        <p className="text-xs text-danger-600">Tanggal mulai tidak boleh setelah tanggal akhir.</p>
       )}
 
       {loading && <SessionListSkeleton />}
@@ -364,9 +394,9 @@ export function MentoringList({
           <Select
             id="mentoring-branch-filter"
             label="Cabang"
-            value={filters.branchId}
+            value={draftFilters.branchId}
             onChange={(event) =>
-              updateFilters({ ...filters, branchId: event.target.value, outletId: '' })
+              setDraftFilters({ ...draftFilters, branchId: event.target.value, outletId: '' })
             }
             options={[
               { value: '', label: 'Semua cabang' },
@@ -376,10 +406,8 @@ export function MentoringList({
           <Select
             id="mentoring-outlet-filter"
             label="Outlet"
-            value={filters.outletId}
-            onChange={(event) =>
-              updateFilters({ ...filters, outletId: event.target.value })
-            }
+            value={draftFilters.outletId}
+            onChange={(event) => setDraftFilters({ ...draftFilters, outletId: event.target.value })}
             options={[
               { value: '', label: 'Semua outlet' },
               ...visibleOutlets.map((outlet) => ({ value: outlet.id, label: outlet.name })),
@@ -390,25 +418,28 @@ export function MentoringList({
               id="mentoring-from-filter"
               label="Dari tanggal"
               type="date"
-              value={filters.from}
-              onChange={(event) =>
-                updateFilters({ ...filters, from: event.target.value })
-              }
+              value={draftFilters.from}
+              onChange={(event) => setDraftFilters({ ...draftFilters, from: event.target.value })}
             />
             <Input
               id="mentoring-to-filter"
               label="Sampai tanggal"
               type="date"
-              value={filters.to}
-              onChange={(event) => updateFilters({ ...filters, to: event.target.value })}
+              value={draftFilters.to}
+              onChange={(event) => setDraftFilters({ ...draftFilters, to: event.target.value })}
             />
           </div>
-          {dateRangeError && (
+          {draftDateRangeError && (
             <p className="text-xs text-danger-600">
               Tanggal mulai tidak boleh setelah tanggal akhir.
             </p>
           )}
-          <Button type="button" fullWidth onClick={() => setSheetOpen(false)}>
+          <Button
+            type="button"
+            fullWidth
+            disabled={Boolean(draftDateRangeError)}
+            onClick={applyFilters}
+          >
             Terapkan
           </Button>
         </div>

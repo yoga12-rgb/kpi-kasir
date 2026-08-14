@@ -2,6 +2,7 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ChevronDown,
   Download,
@@ -108,6 +109,59 @@ const scopeOptions = [
 
 type Scope = (typeof scopeOptions)[number]['value'];
 
+function getScope(value: string | null): Scope {
+  return scopeOptions.some((option) => option.value === value) ? (value as Scope) : 'global';
+}
+
+function getMode(value: string | null): 'period' | 'cumulative' {
+  return value === 'cumulative' ? 'cumulative' : 'period';
+}
+
+function getDefaultPeriodId(periods: PeriodOption[]) {
+  return periods.find((period) => period.status === 'open')?.id ?? periods[0]?.id ?? '';
+}
+
+function getLeaderboardFilters(
+  searchParams: URLSearchParams,
+  branches: BranchOption[],
+  outlets: OutletOption[],
+  periods: PeriodOption[],
+  defaultPeriodId: string
+) {
+  const level = getScope(searchParams.get('level'));
+  const mode = getMode(searchParams.get('mode'));
+  const requestedPeriodId = searchParams.get('periodId');
+  const periodId =
+    requestedPeriodId && periods.some((period) => period.id === requestedPeriodId)
+      ? requestedPeriodId
+      : defaultPeriodId;
+  let branchId = searchParams.get('branchId') ?? '';
+  let outletId = searchParams.get('outletId') ?? '';
+
+  if (!branches.some((branch) => branch.id === branchId)) branchId = '';
+  const outlet = outlets.find((item) => item.id === outletId);
+  if (!outlet) outletId = '';
+
+  if (level === 'global') {
+    branchId = '';
+    outletId = '';
+  } else if (level === 'branch') {
+    outletId = '';
+  } else if (outlet && outletId) {
+    if (!branchId) branchId = outlet.branch_id;
+    if (branchId !== outlet.branch_id) outletId = '';
+  }
+
+  return {
+    level,
+    mode,
+    periodId,
+    branchId,
+    outletId,
+    search: searchParams.get('search')?.slice(0, 100) ?? '',
+  };
+}
+
 export function LeaderboardView({
   branches,
   outlets,
@@ -119,20 +173,60 @@ export function LeaderboardView({
   periods: PeriodOption[];
   initialResult?: InitialLeaderboardResult;
 }) {
-  const [level, setLevel] = useState<Scope>('global');
-  const [mode, setMode] = useState<'period' | 'cumulative'>('period');
-  const [branchId, setBranchId] = useState('');
-  const [outletId, setOutletId] = useState('');
-  const [periodId, setPeriodId] = useState(
-    () => periods.find((period) => period.status === 'open')?.id ?? periods[0]?.id ?? ''
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const queryString = searchParams.toString();
+  const defaultPeriodId = getDefaultPeriodId(periods);
+  const initialFilters = getLeaderboardFilters(
+    new URLSearchParams(queryString),
+    branches,
+    outlets,
+    periods,
+    defaultPeriodId
   );
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [level, setLevel] = useState<Scope>(() => initialFilters.level);
+  const [mode, setMode] = useState<'period' | 'cumulative'>(() => initialFilters.mode);
+  const [branchId, setBranchId] = useState(() => initialFilters.branchId);
+  const [outletId, setOutletId] = useState(() => initialFilters.outletId);
+  const [periodId, setPeriodId] = useState(() => initialFilters.periodId);
+  const [searchInput, setSearchInput] = useState(() => initialFilters.search);
+  const [search, setSearch] = useState(() => initialFilters.search);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [expandedCashierId, setExpandedCashierId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<'scope' | 'filter' | null>(null);
   const returnTo = useCurrentReturnTo();
+
+  useEffect(() => {
+    const next = getLeaderboardFilters(
+      new URLSearchParams(queryString),
+      branches,
+      outlets,
+      periods,
+      defaultPeriodId
+    );
+    setLevel(next.level);
+    setMode(next.mode);
+    setBranchId(next.branchId);
+    setOutletId(next.outletId);
+    setPeriodId(next.periodId);
+    setSearchInput(next.search);
+    setSearch(next.search);
+  }, [branches, defaultPeriodId, outlets, periods, queryString]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+    if (level !== 'global') nextParams.set('level', level);
+    if (mode !== 'period') nextParams.set('mode', mode);
+    if (periodId && periodId !== defaultPeriodId) nextParams.set('periodId', periodId);
+    if (branchId) nextParams.set('branchId', branchId);
+    if (outletId) nextParams.set('outletId', outletId);
+    if (search) nextParams.set('search', search);
+
+    if (nextParams.toString() === queryString) return;
+    const query = nextParams.toString();
+    window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
+  }, [branchId, defaultPeriodId, level, mode, outletId, pathname, periodId, queryString, search]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -256,6 +350,7 @@ export function LeaderboardView({
     setMode('period');
     setBranchId('');
     setOutletId('');
+    setPeriodId(defaultPeriodId);
     setSearchInput('');
     setSearch('');
     setExpandedCashierId(null);
@@ -263,10 +358,18 @@ export function LeaderboardView({
 
   const scopeLabel = scopeOptions.find((option) => option.value === level)?.label ?? 'Cakupan';
   const modeLabel = mode === 'period' ? 'Skor Periode' : 'Skor Akumulatif';
-  const isDirty = level !== 'global' || mode !== 'period' || branchId !== '' || outletId !== '' || search !== '';
+  const isDirty =
+    level !== 'global' ||
+    mode !== 'period' ||
+    periodId !== defaultPeriodId ||
+    branchId !== '' ||
+    outletId !== '' ||
+    search !== '';
   const activeFilterCount =
-    (branchId ? 1 : 0) + (outletId ? 1 : 0) + (search ? 1 : 0) +
-    (level !== 'global' ? (branchId ? 0 : 1) : 0);
+    (periodId !== defaultPeriodId ? 1 : 0) +
+    (branchId ? 1 : 0) +
+    (outletId ? 1 : 0) +
+    (search ? 1 : 0);
 
   return (
     <div className="space-y-4">
@@ -316,7 +419,11 @@ export function LeaderboardView({
           <ChevronDown className="h-4 w-4 text-surface-400" aria-hidden="true" />
         </button>
 
-        <div role="group" aria-label="Jenis skor" className="flex shrink-0 rounded-xl border border-surface-300 bg-white p-0.5">
+        <div
+          role="group"
+          aria-label="Jenis skor"
+          className="flex shrink-0 rounded-xl border border-surface-300 bg-white p-0.5"
+        >
           {(['period', 'cumulative'] as const).map((item) => (
             <button
               key={item}
@@ -325,9 +432,7 @@ export function LeaderboardView({
               aria-pressed={mode === item}
               className={cn(
                 'h-9 rounded-lg px-2.5 text-xs font-medium transition-colors',
-                mode === item
-                  ? 'bg-primary-500 text-surface-900'
-                  : 'text-surface-500'
+                mode === item ? 'bg-primary-500 text-surface-900' : 'text-surface-500'
               )}
             >
               {item === 'period' ? 'Periode' : 'Kumulatif'}
@@ -548,7 +653,11 @@ export function LeaderboardView({
       )}
 
       {/* Sheet pilih cakupan */}
-      <BottomSheet open={sheet === 'scope'} onClose={() => setSheet(null)} title="Cakupan peringkat">
+      <BottomSheet
+        open={sheet === 'scope'}
+        onClose={() => setSheet(null)}
+        title="Cakupan peringkat"
+      >
         <div className="space-y-2">
           {scopeOptions.map((option) => (
             <button
@@ -577,7 +686,11 @@ export function LeaderboardView({
       </BottomSheet>
 
       {/* Sheet filter lanjutan */}
-      <BottomSheet open={sheet === 'filter'} onClose={() => setSheet(null)} title="Filter leaderboard">
+      <BottomSheet
+        open={sheet === 'filter'}
+        onClose={() => setSheet(null)}
+        title="Filter leaderboard"
+      >
         <div className="space-y-4">
           {mode === 'period' && (
             <Select

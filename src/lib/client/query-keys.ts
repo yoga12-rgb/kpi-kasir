@@ -11,12 +11,14 @@ export const appQueryKeys = {
   cashierTabsRoot: ['cashier-tabs'] as const,
   leaderboardRoot: ['leaderboard'] as const,
   mentoringSessionsRoot: ['mentoring-sessions'] as const,
+  assessmentListRoot: ['assessment-list'] as const,
   invitesRoot: ['invites'] as const,
   inviteBranches: ['invite-branches'] as const,
   leaderboard: (level: string, mode: string, periodId: string, branchId: string, outletId: string, search: string) =>
     ['leaderboard', level, mode, periodId, branchId, outletId, search] as const,
   mentoringSessions: (branchId: string, outletId: string, from: string, to: string) =>
     ['mentoring-sessions', branchId, outletId, from, to] as const,
+  assessmentList: (filters: readonly string[]) => ['assessment-list', ...filters] as const,
   invites: (search: string) => ['invites', search] as const,
 };
 
