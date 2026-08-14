@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.13] - 2026-08-14
+
+### Changed
+
+- Menyederhanakan kontrol halaman leaderboard menjadi satu baris ringkas, memindahkan pilihan cakupan dan filter lanjutan ke dalam lembar lipat agar fokus tetap pada peringkat di perangkat mobile.
+
 ## [0.2.12] - 2026-08-14
 
 ### Changed

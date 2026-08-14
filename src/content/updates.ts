@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.13',
+    date: '2026-08-14',
+    title: 'Leaderboard lebih fokus',
+    summary:
+      'Kontrol leaderboard disederhanakan menjadi satu baris ringkas; pilihan cakupan dan filter lanjutan dipindah ke lembar lipat.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Bar filter leaderboard kini ringkas dan tidak lagi menumpuk di mobile.',
+          'Pilihan cakupan (lintas cabang/per cabang/per outlet) dan filter detail dipindah ke Bottom Sheet.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.12',
     date: '2026-08-14',
     title: 'Filter lanjutan leaderboard',
