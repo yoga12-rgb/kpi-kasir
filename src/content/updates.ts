@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.6',
+    date: '2026-08-14',
+    title: 'Layar sambut iOS',
+    summary:
+      'Aplikasi kini menampilkan layar sambut (splash) saat dibuka dari layar utama pada perangkat iOS.',
+    sections: [
+      {
+        category: 'added',
+        label: 'Fitur Baru',
+        items: [
+          'Menambahkan layar sambut khusus iOS untuk pengalaman pembukaan yang lebih mulus.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.5',
     date: '2026-08-13',
     title: 'Peningkatan aksesibilitas dan konsistensi tampilan',

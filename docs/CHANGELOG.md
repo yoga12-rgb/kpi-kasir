@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.6] - 2026-08-14
+
+### Added
+
+- Menambahkan layar sambut (startup screen) khusus iOS saat aplikasi dibuka dari layar utama.
+
 ## [0.2.5] - 2026-08-13
 
 ### Fixed
