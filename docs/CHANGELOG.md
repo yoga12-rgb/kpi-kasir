@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.8] - 2026-08-14
+
+### Added
+
+- Menyimpan draf penilaian secara otomatis agar input tidak hilang saat navigasi atau koneksi terputus, dengan opsi membuang draf.
+
 ## [0.2.7] - 2026-08-14
 
 ### Fixed

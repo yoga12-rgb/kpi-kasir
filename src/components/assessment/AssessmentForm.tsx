@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
@@ -10,6 +10,27 @@ import { Toast } from '@/components/ui/Overlay';
 import { useQueryClient } from '@tanstack/react-query';
 import { appQueryKeys, invalidateAppQueries } from '@/lib/client/query-keys';
 import { getErrorMessage, formatScore } from '@/lib/utils';
+import {
+  clearDraft,
+  loadDraft,
+  saveDraft,
+  type DraftStorage,
+} from '@/lib/assessment/draft';
+
+const draftStorage: DraftStorage = {
+  getItem(key) {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(key);
+  },
+  setItem(key, value) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(key, value);
+  },
+  removeItem(key) {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(key);
+  },
+};
 
 export interface CategoryWithDetails {
   id: string;
@@ -57,6 +78,69 @@ export function AssessmentForm({
   });
 
   const [deductionNotes, setDeductionNotes] = useState<Record<string, string>>({});
+  const [draftAt, setDraftAt] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const draft = loadDraft(draftStorage, periodId, cashierId);
+    if (draft) {
+      setValues((prev) => ({ ...prev, ...draft.scaleValues }));
+      setDeductionNotes((prev) => ({ ...prev, ...draft.deductionNotes }));
+      setDraftAt(draft.updatedAt);
+    }
+    setHydrated(true);
+  }, [periodId, cashierId]);
+
+  const hasUnsavedChanges = useMemo(() => {
+    for (const cat of categories) {
+      for (const d of cat.details) {
+        if (d.type !== 'scale') continue;
+        const saved = d.scale_value !== null ? String(d.scale_value) : '';
+        if ((values[d.id] ?? '') !== saved) return true;
+      }
+    }
+    return Object.values(deductionNotes).some((note) => note.trim() !== '');
+  }, [categories, values, deductionNotes]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+
+    if (!hasUnsavedChanges) {
+      clearDraft(draftStorage, periodId, cashierId);
+      setDraftAt(null);
+      return;
+    }
+
+    const handle = window.setTimeout(() => {
+      const updatedAt = new Date().toISOString();
+      saveDraft(draftStorage, periodId, cashierId, {
+        scaleValues: values,
+        deductionNotes,
+        updatedAt,
+      });
+      setDraftAt(updatedAt);
+    }, 400);
+
+    return () => window.clearTimeout(handle);
+  }, [hydrated, hasUnsavedChanges, values, deductionNotes, periodId, cashierId]);
+
+  function discardDraft() {
+    clearDraft(draftStorage, periodId, cashierId);
+    setDeductionNotes({});
+    setValues(() => {
+      const map: Record<string, string> = {};
+      for (const cat of categories) {
+        for (const d of cat.details) {
+          if (d.type === 'scale' && d.scale_value !== null) {
+            map[d.id] = String(d.scale_value);
+          }
+        }
+      }
+      return map;
+    });
+    setDraftAt(null);
+    setToast({ message: 'Draf dibuang', variant: 'success' });
+  }
 
   async function saveScale(detailId: string) {
     const value = values[detailId];
@@ -190,6 +274,27 @@ export function AssessmentForm({
 
   return (
     <div className="space-y-4">
+      <div className="flex min-h-5 items-center justify-between">
+        {hasUnsavedChanges ? (
+          <p className="text-xs text-surface-500">
+            Draf tersimpan otomatis
+            {draftAt
+              ? ` · ${new Date(draftAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+              : ''}
+          </p>
+        ) : (
+          <span aria-hidden="true" />
+        )}
+        {hasUnsavedChanges && (
+          <button
+            type="button"
+            className="text-xs text-surface-400 underline-offset-2 hover:text-surface-600 hover:underline"
+            onClick={discardDraft}
+          >
+            Buang draf
+          </button>
+        )}
+      </div>
       {categories.map((cat) => (
         <div key={cat.id} className="rounded-2xl border border-surface-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">

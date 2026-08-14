@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.8',
+    date: '2026-08-14',
+    title: 'Draf penilaian otomatis',
+    summary:
+      'Input penilaian kini tersimpan otomatis sebagai draf sehingga tidak hilang saat navigasi atau koneksi terputus.',
+    sections: [
+      {
+        category: 'added',
+        label: 'Fitur Baru',
+        items: [
+          'Menyimpan draf nilai skala dan catatan deduksi secara otomatis.',
+          'Menampilkan status draf tersimpan dan opsi untuk membuangnya.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.7',
     date: '2026-08-14',
     title: 'Kompatibilitas layar sambut iOS',
