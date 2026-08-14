@@ -16,6 +16,20 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.12',
+    date: '2026-08-14',
+    title: 'Filter lanjutan leaderboard',
+    summary:
+      'Filter cabang dan outlet kini dikelompokkan dalam panel lipat agar halaman lebih ringkas di perangkat mobile.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: ['Menambahkan panel "Filter lanjutan" dengan penanda jumlah filter aktif.'],
+      },
+    ],
+  },
+  {
     version: '0.2.11',
     date: '2026-08-14',
     title: 'Penyempurnaan Leaderboard',

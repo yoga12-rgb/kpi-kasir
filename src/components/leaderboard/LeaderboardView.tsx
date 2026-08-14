@@ -2,7 +2,15 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ChevronDown, Download, Lock, Medal, RotateCcw, Trophy } from 'lucide-react';
+import {
+  ChevronDown,
+  Download,
+  Lock,
+  Medal,
+  RotateCcw,
+  SlidersHorizontal,
+  Trophy,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import Button from '@/components/ui/Button';
@@ -114,6 +122,7 @@ export function LeaderboardView({
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [expandedCashierId, setExpandedCashierId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const returnTo = useCurrentReturnTo();
 
   useEffect(() => {
@@ -268,51 +277,64 @@ export function LeaderboardView({
         ))}
       </div>
 
-      {level === 'branch' && (
-        <Select
-          id="leaderboard-branch-filter"
-          label="Pilih Cabang"
-          value={branchId}
-          onChange={(event) => {
-            setBranchId(event.target.value);
-            setOutletId('');
-          }}
-          options={[
-            { value: '', label: 'Semua cabang' },
-            ...branches.map((branch) => ({ value: branch.id, label: branch.name })),
-          ]}
-        />
-      )}
-
-      {level === 'outlet' && (
-        <Select
-          id="leaderboard-outlet-branch-filter"
-          label="Pilih Cabang"
-          value={branchId}
-          onChange={(event) => {
-            setBranchId(event.target.value);
-            setOutletId('');
-          }}
-          options={[
-            { value: '', label: 'Semua cabang' },
-            ...branches.map((branch) => ({ value: branch.id, label: branch.name })),
-          ]}
-        />
-      )}
-
-      {level === 'outlet' && branchId && (
-        <Select
-          id="leaderboard-outlet-filter"
-          label="Pilih Outlet"
-          value={outletId}
-          onChange={(event) => setOutletId(event.target.value)}
-          options={[
-            { value: '', label: 'Semua outlet' },
-            ...outlets
-              .filter((outlet) => outlet.branch_id === branchId)
-              .map((outlet) => ({ value: outlet.id, label: outlet.name })),
-          ]}
-        />
+      {(level === 'branch' || level === 'outlet') && (
+        <div className="rounded-xl border border-surface-200 bg-surface-50 p-3">
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((value) => !value)}
+            aria-expanded={showAdvanced}
+            aria-controls="leaderboard-advanced-filters"
+            className="flex w-full items-center justify-between text-sm font-medium text-surface-700"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-surface-400" aria-hidden="true" />
+              Filter lanjutan
+              {(branchId || outletId) && (
+                <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-700">
+                  {(branchId ? 1 : 0) + (outletId ? 1 : 0)}
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 text-surface-400 transition-transform',
+                showAdvanced && 'rotate-180'
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          {showAdvanced && (
+            <div id="leaderboard-advanced-filters" className="mt-3 space-y-3">
+              <Select
+                id="leaderboard-branch-filter"
+                label="Pilih Cabang"
+                value={branchId}
+                onChange={(event) => {
+                  setBranchId(event.target.value);
+                  setOutletId('');
+                }}
+                options={[
+                  { value: '', label: 'Semua cabang' },
+                  ...branches.map((branch) => ({ value: branch.id, label: branch.name })),
+                ]}
+              />
+              {level === 'outlet' && branchId && (
+                <Select
+                  id="leaderboard-outlet-filter"
+                  label="Pilih Outlet"
+                  value={outletId}
+                  onChange={(event) => setOutletId(event.target.value)}
+                  options={[
+                    { value: '', label: 'Semua outlet' },
+                    ...outlets
+                      .filter((outlet) => outlet.branch_id === branchId)
+                      .map((outlet) => ({ value: outlet.id, label: outlet.name })),
+                  ]}
+                />
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {mode === 'period' && (

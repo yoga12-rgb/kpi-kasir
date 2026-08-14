@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.12] - 2026-08-14
+
+### Changed
+
+- Mengelompokkan filter cabang/outlet leaderboard ke dalam panel "Filter lanjutan" agar halaman lebih ringkas di perangkat mobile, dengan penanda jumlah filter aktif.
+
 ## [0.2.11] - 2026-08-14
 
 ### Changed
