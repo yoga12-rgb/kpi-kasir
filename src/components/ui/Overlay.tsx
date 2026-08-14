@@ -33,8 +33,12 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     const initialFocus = dialog?.querySelector<HTMLElement>('[data-autofocus]') ?? focusable?.[0];
     initialFocus?.focus();
 
-    const previousOverflow = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overscrollBehavior = 'contain';
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -65,7 +69,9 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overscrollBehavior = previousBodyOverscroll;
       if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
     };
   }, [onClose, open]);
@@ -101,7 +107,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center md:p-4"
+      className="fixed inset-0 z-50 flex touch-none items-end justify-center bg-black/50 md:items-center md:p-4"
       onClick={onClose}
     >
       <div
@@ -113,7 +119,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
           transform: dragY > 0 ? `translateY(${dragY}px)` : 'translateY(0)',
           transition: dragY > 0 ? 'none' : 'transform 180ms ease-out',
         }}
-        className="max-h-[85vh] w-full max-w-app overflow-y-auto rounded-t-2xl bg-white p-5 shadow-sheet md:max-w-lg md:rounded-2xl md:shadow-2xl"
+        className="max-h-[85vh] w-full max-w-app touch-pan-y overflow-y-auto rounded-t-2xl bg-white p-5 shadow-sheet md:max-w-lg md:rounded-2xl md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

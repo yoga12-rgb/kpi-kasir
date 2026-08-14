@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.16',
+    date: '2026-08-14',
+    title: 'Perbaikan Bottom Sheet & header peringkat',
+    summary:
+      'Scroll latar belakang terkunci saat Bottom Sheet terbuka, dan tombol aksi pindah sejajar dengan judul peringkat.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Mengunci scroll halaman saat Bottom Sheet terbuka.',
+          'Menyejajarkan tombol Ekspor CSV dan Reset dengan judul halaman peringkat.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.15',
     date: '2026-08-14',
     title: 'Perbaikan tampilan leaderboard',

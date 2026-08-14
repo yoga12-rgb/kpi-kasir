@@ -270,6 +270,40 @@ export function LeaderboardView({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-surface-900">Peringkat</h1>
+          <p className="mt-0.5 text-sm text-surface-500">Ranking performa kasir</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={exporting}
+            aria-label="Ekspor CSV"
+            title="Ekspor CSV"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100 disabled:opacity-50"
+          >
+            {exporting ? (
+              <Spinner className="h-4 w-4" />
+            ) : (
+              <Download className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+          {isDirty && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              aria-label="Reset filter"
+              title="Reset filter"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100"
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Bar kontrol ringkas */}
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -320,34 +354,6 @@ export function LeaderboardView({
             </span>
           )}
         </button>
-
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={exportCsv}
-            disabled={exporting}
-            aria-label="Ekspor CSV"
-            title="Ekspor CSV"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100 disabled:opacity-50"
-          >
-            {exporting ? (
-              <Spinner className="h-4 w-4" />
-            ) : (
-              <Download className="h-4 w-4" aria-hidden="true" />
-            )}
-          </button>
-          {isDirty && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              aria-label="Reset filter"
-              title="Reset filter"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100"
-            >
-              <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Label mode aktif + status kunci */}

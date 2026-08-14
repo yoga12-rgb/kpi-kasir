@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.16] - 2026-08-14
+
+### Fixed
+
+- Mengunci scroll latar belakang saat Bottom Sheet terbuka di perangkat sentuh.
+- Memindahkan tombol Ekspor CSV dan Reset ke samping judul halaman peringkat agar lebih sejajar dan mudah dijangkau.
+
 ## [0.2.15] - 2026-08-14
 
 ### Fixed
