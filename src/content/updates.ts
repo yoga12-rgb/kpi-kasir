@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.9',
+    date: '2026-08-14',
+    title: 'Ikon catatan pendampingan',
+    summary:
+      'Bagian Catatan Outlet dan Catatan per Kasir kini memiliki ikon agar lebih mudah dikenali.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Menambahkan ikon pada Catatan Outlet dan Catatan per Kasir di detail pendampingan.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.8',
     date: '2026-08-14',
     title: 'Draf penilaian otomatis',

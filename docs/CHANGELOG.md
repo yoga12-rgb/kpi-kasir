@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.9] - 2026-08-14
+
+### Changed
+
+- Menambahkan ikon pada bagian Catatan Outlet dan Catatan per Kasir di detail pendampingan agar lebih mudah dipindai.
+
 ## [0.2.8] - 2026-08-14
 
 ### Added

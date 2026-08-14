@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
+import { Store, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { BackLink } from '@/components/navigation/BackLink';
 import { MentoringEvidenceGallery } from '@/components/mentoring/MentoringEvidenceGallery';
@@ -84,13 +85,19 @@ export default async function MentoringDetailPage({
 
       {session.note_outlet && (
         <Card className="mt-4">
-          <h2 className="mb-2 text-base font-semibold text-surface-900">Catatan Outlet</h2>
+          <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-surface-900">
+            <Store className="h-4 w-4 text-primary-600" aria-hidden="true" />
+            Catatan Outlet
+          </h2>
           <p className="text-sm text-surface-700">{session.note_outlet}</p>
         </Card>
       )}
 
       <Card className="mt-4">
-        <h2 className="mb-3 text-base font-semibold text-surface-900">Catatan per Kasir</h2>
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-surface-900">
+          <Users className="h-4 w-4 text-primary-600" aria-hidden="true" />
+          Catatan per Kasir
+        </h2>
         <div className="space-y-3">
           {(notes ?? []).map((note) => (
             <div key={note.id} className="border-b border-surface-100 pb-3 last:border-0">
