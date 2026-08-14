@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.18',
+    date: '2026-08-14',
+    title: 'Card pendampingan lebih informatif',
+    summary:
+      'Card daftar pendampingan kini menampilkan ringkasan catatan outlet dan jumlah foto bukti.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Menampilkan cuplikan catatan outlet pada daftar sesi.',
+          'Menampilkan jumlah foto bukti pada setiap sesi yang memilikinya.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.17',
     date: '2026-08-14',
     title: 'Filter pendampingan lebih ringkas',

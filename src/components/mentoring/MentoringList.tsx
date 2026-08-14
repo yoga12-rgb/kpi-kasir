@@ -2,7 +2,7 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Calendar, ChevronRight, RotateCcw, SlidersHorizontal, UserRound, Users } from 'lucide-react';
+import { Calendar, ChevronRight, Images, RotateCcw, SlidersHorizontal, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
@@ -39,9 +39,11 @@ interface Filters {
 interface MentoringSessionItem {
   id: string;
   visited_date: string;
+  note_outlet: string | null;
   outlet: { name?: string; branch_id?: string; branch?: { name?: string | null } | null } | { name?: string }[] | null;
   conducted_by: { full_name?: string } | { full_name?: string }[] | null;
   mentoring_cashier_note?: { count?: number } | { count?: number }[];
+  mentoring_evidence?: { count?: number } | { count?: number }[];
 }
 
 interface SessionsResponse {
@@ -52,6 +54,12 @@ interface SessionsResponse {
 
 function getRelation<T>(relation: T | T[] | null | undefined) {
   return Array.isArray(relation) ? (relation[0] ?? null) : (relation ?? null);
+}
+
+function getCount(value: { count?: number } | { count?: number }[] | undefined) {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value[0]?.count ?? 0;
+  return value.count ?? 0;
 }
 
 async function fetchSessions(filters: Filters, cursor?: string | null, signal?: AbortSignal) {
@@ -287,9 +295,8 @@ export function MentoringList({
           {sessions.map((session) => {
             const outlet = getRelation(session.outlet);
             const conductedBy = getRelation(session.conducted_by);
-            const notesCount = Array.isArray(session.mentoring_cashier_note)
-              ? session.mentoring_cashier_note[0]?.count ?? 0
-              : session.mentoring_cashier_note?.count ?? 0;
+            const notesCount = getCount(session.mentoring_cashier_note);
+            const evidenceCount = getCount(session.mentoring_evidence);
 
             return (
               <Link
@@ -297,25 +304,38 @@ export function MentoringList({
                 href={withReturnTo(`/mentoring/${session.id}`, returnTo)}
                 className="block"
               >
-                <Card className="flex items-center justify-between transition-colors hover:bg-surface-100">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-surface-900">{outlet?.name ?? '-'}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
-                        {formatDate(session.visited_date)}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <UserRound className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
-                        {conductedBy?.full_name ?? '-'}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
-                        {notesCount} kasir
-                      </span>
+                <Card className="transition-colors hover:bg-surface-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-surface-900">{outlet?.name ?? '-'}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-surface-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
+                          {formatDate(session.visited_date)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <UserRound className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
+                          {conductedBy?.full_name ?? '-'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
+                          {notesCount} kasir
+                        </span>
+                        {evidenceCount > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Images className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
+                            {evidenceCount} foto
+                          </span>
+                        )}
+                      </div>
+                      {session.note_outlet && (
+                        <p className="mt-1 line-clamp-2 text-xs text-surface-500">
+                          {session.note_outlet}
+                        </p>
+                      )}
                     </div>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-surface-400" />
                   </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-surface-400" />
                 </Card>
               </Link>
             );

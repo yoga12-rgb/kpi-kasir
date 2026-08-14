@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.18] - 2026-08-14
+
+### Changed
+
+- Menampilkan ringkasan catatan outlet dan jumlah foto bukti pada card daftar pendampingan agar lebih informatif tanpa membuka detail.
+
 ## [0.2.17] - 2026-08-14
 
 ### Changed
