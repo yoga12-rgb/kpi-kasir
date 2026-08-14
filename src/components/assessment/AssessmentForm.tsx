@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { CircleAlert, CloudOff, Plus, Trash2 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Form';
 import { Badge } from '@/components/ui/Badge';
@@ -49,6 +49,8 @@ export interface CategoryWithDetails {
   }[];
 }
 
+type SavingState = 'idle' | 'saving' | 'saved' | 'error';
+
 export function AssessmentForm({
   cashierId,
   periodId,
@@ -61,6 +63,7 @@ export function AssessmentForm({
   const router = useRouter();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [savingState, setSavingState] = useState<SavingState>('idle');
   const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(
     null
   );
@@ -91,21 +94,35 @@ export function AssessmentForm({
     setHydrated(true);
   }, [periodId, cashierId]);
 
-  const hasUnsavedChanges = useMemo(() => {
+  /** Nilai skala yang sudah berubah dari nilai tersimpan server dan belum dikirim. */
+  const pendingScaleDetails = useMemo(() => {
+    const pending: { detailId: string; value: string }[] = [];
     for (const cat of categories) {
       for (const d of cat.details) {
         if (d.type !== 'scale') continue;
+        const value = values[d.id] ?? '';
+        if (value === '') continue;
         const saved = d.scale_value !== null ? String(d.scale_value) : '';
-        if ((values[d.id] ?? '') !== saved) return true;
+        if (value !== saved) pending.push({ detailId: d.id, value });
       }
     }
-    return Object.values(deductionNotes).some((note) => note.trim() !== '');
-  }, [categories, values, deductionNotes]);
+    return pending;
+  }, [categories, values]);
+
+  const pendingScaleCount = pendingScaleDetails.length;
+
+  /** Ada perubahan lokal (draf) yang belum dikirim ke server. */
+  const hasDraftChanges = useMemo(() => {
+    return (
+      pendingScaleCount > 0 ||
+      Object.values(deductionNotes).some((note) => note.trim() !== '')
+    );
+  }, [pendingScaleCount, deductionNotes]);
 
   useEffect(() => {
     if (!hydrated) return;
 
-    if (!hasUnsavedChanges) {
+    if (!hasDraftChanges) {
       clearDraft(draftStorage, periodId, cashierId);
       setDraftAt(null);
       return;
@@ -122,7 +139,7 @@ export function AssessmentForm({
     }, 400);
 
     return () => window.clearTimeout(handle);
-  }, [hydrated, hasUnsavedChanges, values, deductionNotes, periodId, cashierId]);
+  }, [hydrated, hasDraftChanges, values, deductionNotes, periodId, cashierId]);
 
   function discardDraft() {
     clearDraft(draftStorage, periodId, cashierId);
@@ -139,49 +156,60 @@ export function AssessmentForm({
       return map;
     });
     setDraftAt(null);
+    setSavingState('idle');
     setToast({ message: 'Draf dibuang', variant: 'success' });
   }
 
-  async function saveScale(detailId: string) {
-    const value = values[detailId];
-    if (value === undefined || value === '') {
-      setToast({ message: 'Isi nilai skala terlebih dahulu', variant: 'error' });
-      return;
-    }
+  async function saveAll() {
+    if (pendingScaleCount === 0 || loading) return;
 
     setLoading(true);
+    setSavingState('saving');
     setToast(null);
 
-    try {
-      const res = await fetch('/api/assessments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          periodId,
-          cashierId,
-          detailId,
-          scaleValue: Number(value),
-        }),
-      });
+    let succeeded = 0;
+    let failed = 0;
 
-      const data = await res.json();
-      if (!res.ok) {
-        setToast({ message: getErrorMessage(data.error, 'Gagal menyimpan'), variant: 'error' });
-        setLoading(false);
-        return;
+    for (const { detailId, value } of pendingScaleDetails) {
+      try {
+        const res = await fetch('/api/assessments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            periodId,
+            cashierId,
+            detailId,
+            scaleValue: Number(value),
+          }),
+        });
+        if (res.ok) {
+          succeeded += 1;
+        } else {
+          failed += 1;
+        }
+      } catch {
+        failed += 1;
       }
-
-      setToast({ message: 'Penilaian tersimpan', variant: 'success' });
-      void invalidateAppQueries(queryClient, [
-        appQueryKeys.leaderboardRoot,
-        appQueryKeys.cashierTabsRoot,
-      ]);
-      router.refresh();
-    } catch (err) {
-      setToast({ message: getErrorMessage(err), variant: 'error' });
-    } finally {
-      setLoading(false);
     }
+
+    void invalidateAppQueries(queryClient, [
+      appQueryKeys.leaderboardRoot,
+      appQueryKeys.cashierTabsRoot,
+    ]);
+    router.refresh();
+
+    if (failed > 0) {
+      setSavingState('error');
+      setToast({
+        message: `${failed} dari ${succeeded + failed} nilai gagal disimpan. Perubahan tetap tersimpan sebagai draf.`,
+        variant: 'error',
+      });
+    } else {
+      setSavingState('saved');
+      setToast({ message: 'Penilaian tersimpan', variant: 'success' });
+    }
+
+    setLoading(false);
   }
 
   async function addDeduction(detailId: string, assessmentId: string | null) {
@@ -191,7 +219,6 @@ export function AssessmentForm({
 
     try {
       if (!assessmentId) {
-        // Buat assessment awal (skor 100) untuk detail deduksi
         const initRes = await fetch('/api/assessments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -272,20 +299,38 @@ export function AssessmentForm({
     }
   }
 
+  const statusMessage =
+    savingState === 'saving'
+      ? 'Menyimpan ke server…'
+      : pendingScaleCount > 0
+        ? `${pendingScaleCount} nilai belum disimpan ke server`
+        : savingState === 'error'
+          ? 'Sebagian nilai gagal disimpan'
+          : savingState === 'saved'
+            ? 'Penilaian tersimpan di server'
+            : null;
+
   return (
     <div className="space-y-4">
-      <div className="flex min-h-5 items-center justify-between">
-        {hasUnsavedChanges ? (
-          <p className="text-xs text-surface-500">
-            Draf tersimpan otomatis
-            {draftAt
-              ? ` · ${new Date(draftAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
-              : ''}
-          </p>
-        ) : (
-          <span aria-hidden="true" />
-        )}
-        {hasUnsavedChanges && (
+      {/* Status sinkronisasi & aksi draf */}
+      <div className="flex min-h-5 items-center justify-between gap-3">
+        <p
+          className={`flex items-center gap-1.5 text-xs ${
+            pendingScaleCount > 0 || savingState === 'error'
+              ? 'text-warning-600'
+              : savingState === 'saved'
+                ? 'text-success-600'
+                : 'text-surface-500'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {statusMessage && (pendingScaleCount > 0 || savingState === 'error') && (
+            <CloudOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          )}
+          {statusMessage}
+        </p>
+        {hasDraftChanges && pendingScaleCount === 0 && (
           <button
             type="button"
             className="text-xs text-surface-400 underline-offset-2 hover:text-surface-600 hover:underline"
@@ -295,6 +340,7 @@ export function AssessmentForm({
           </button>
         )}
       </div>
+
       {categories.map((cat) => (
         <div key={cat.id} className="rounded-2xl border border-surface-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -308,6 +354,8 @@ export function AssessmentForm({
                 const scaleMax = Number(detail.scale_max ?? 0);
                 const scaleValue = values[detail.id] ?? '';
                 const sliderValue = scaleValue === '' ? 0 : Number(scaleValue);
+                const saved = detail.scale_value !== null ? String(detail.scale_value) : '';
+                const isPending = scaleValue !== '' && scaleValue !== saved;
 
                 return (
                   <div key={detail.id} className="rounded-xl bg-surface-50 p-3">
@@ -318,6 +366,9 @@ export function AssessmentForm({
                           Skala 0–{detail.scale_max} · skor {formatScore(detail.normalized_score)}
                         </p>
                       </div>
+                      {isPending && (
+                        <Badge variant="warning">Belum tersimpan</Badge>
+                      )}
                     </div>
                     <div className="mt-3">
                       <div className="mb-1 flex items-center justify-between text-xs text-surface-500">
@@ -345,7 +396,7 @@ export function AssessmentForm({
                         <span>{scaleMax.toFixed(1)}</span>
                       </div>
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3">
                       <Input
                         type="number"
                         min={0}
@@ -358,9 +409,6 @@ export function AssessmentForm({
                         placeholder={`0–${detail.scale_max}`}
                         className="w-28"
                       />
-                      <Button size="sm" onClick={() => saveScale(detail.id)} disabled={loading}>
-                        Simpan
-                      </Button>
                     </div>
                   </div>
                 );
@@ -410,7 +458,6 @@ export function AssessmentForm({
                         </button>
                       </div>
                     ))}
-                    {/* Pastikan assessment untuk detail deduksi ada */}
                     {detail.assessment_id && detail.deduction_events.length === 0 && (
                       <p className="text-xs text-surface-400">Belum ada kejadian deduksi.</p>
                     )}
@@ -458,6 +505,39 @@ export function AssessmentForm({
           </div>
         </div>
       ))}
+
+      {/* Aksi simpan terpusat */}
+      <div className="sticky bottom-0 -mx-1 mt-2 flex items-center gap-3 border-t border-surface-200 bg-surface-50/95 px-1 py-3 backdrop-blur">
+        <div className="min-w-0 flex-1 text-xs text-surface-500">
+          {hasDraftChanges ? (
+            <span className="flex items-center gap-1.5">
+              <CircleAlert className="h-3.5 w-3.5 text-warning-600" aria-hidden="true" />
+              Ada perubahan yang belum dikirim ke server
+              {draftAt
+                ? ` · draf ${new Date(draftAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+                : ''}
+            </span>
+          ) : (
+            <span>Tidak ada perubahan.</span>
+          )}
+        </div>
+        {hasDraftChanges && (
+          <button
+            type="button"
+            className="shrink-0 text-xs text-surface-400 underline-offset-2 hover:text-surface-600 hover:underline"
+            onClick={discardDraft}
+          >
+            Buang
+          </button>
+        )}
+        <Button
+          onClick={saveAll}
+          disabled={loading || pendingScaleCount === 0}
+          className="shrink-0"
+        >
+          {loading ? 'Menyimpan…' : pendingScaleCount > 0 ? `Simpan Penilaian (${pendingScaleCount})` : 'Simpan Penilaian'}
+        </Button>
+      </div>
 
       <Toast
         open={!!toast}

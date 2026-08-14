@@ -4,7 +4,7 @@
 
 ### Added
 
-- Menyimpan draf penilaian secara otomatis agar input tidak hilang saat navigasi atau koneksi terputus, dengan opsi membuang draf.
+- Menyimpan draf penilaian secara otomatis dan menggabungkan aksi simpan menjadi satu tombol dengan indikator data yang belum terkirim ke server.
 
 ## [0.2.7] - 2026-08-14
 

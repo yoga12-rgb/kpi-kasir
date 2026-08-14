@@ -20,14 +20,14 @@ export const appUpdates: AppUpdate[] = [
     date: '2026-08-14',
     title: 'Draf penilaian otomatis',
     summary:
-      'Input penilaian kini tersimpan otomatis sebagai draf sehingga tidak hilang saat navigasi atau koneksi terputus.',
+      'Input penilaian kini punya satu tombol simpan dengan draf otomatis dan indikator data yang belum terkirim ke server.',
     sections: [
       {
         category: 'added',
         label: 'Fitur Baru',
         items: [
-          'Menyimpan draf nilai skala dan catatan deduksi secara otomatis.',
-          'Menampilkan status draf tersimpan dan opsi untuk membuangnya.',
+          'Aksi simpan penilaian digabung menjadi satu tombol untuk semua nilai skala.',
+          'Menyimpan draf otomatis dan menandai nilai yang belum tersimpan ke server.',
         ],
       },
     ],
