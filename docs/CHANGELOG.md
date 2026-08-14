@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.17] - 2026-08-14
+
+### Changed
+
+- Menyederhanakan filter pendampingan menjadi satu tombol ringkas yang membuka lembar filter, agar daftar sesi langsung terlihat tanpa tumpukan kontrol.
+
 ## [0.2.16] - 2026-08-14
 
 ### Fixed

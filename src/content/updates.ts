@@ -16,6 +16,20 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.17',
+    date: '2026-08-14',
+    title: 'Filter pendampingan lebih ringkas',
+    summary:
+      'Filter pendampingan kini berupa satu tombol yang membuka lembar filter, sehingga daftar sesi langsung terlihat.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: ['Menggabungkan filter cabang, outlet, dan rentang tanggal ke dalam Bottom Sheet.'],
+      },
+    ],
+  },
+  {
     version: '0.2.16',
     date: '2026-08-14',
     title: 'Perbaikan Bottom Sheet & header peringkat',

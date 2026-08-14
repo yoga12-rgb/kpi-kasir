@@ -2,13 +2,15 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { Calendar, ChevronRight, Filter, RotateCcw, UserRound, Users } from 'lucide-react';
+import { Calendar, ChevronRight, RotateCcw, SlidersHorizontal, UserRound, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { EmptyState, Skeleton } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
+import { BottomSheet } from '@/components/ui/Overlay';
+import { cn } from '@/lib/cn';
 import { appQueryKeys } from '@/lib/client/query-keys';
 import { useCurrentReturnTo } from '@/lib/client/use-current-return-to';
 import { buildPath, withReturnTo } from '@/lib/navigation';
@@ -115,6 +117,7 @@ export function MentoringList({
     to: searchParams.get('to') ?? '',
   }));
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     setFilters({
@@ -212,78 +215,54 @@ export function MentoringList({
     void mentoringQuery.refetch();
   }
 
+  const activeFilterCount =
+    (filters.branchId ? 1 : 0) +
+    (filters.outletId ? 1 : 0) +
+    (filters.from ? 1 : 0) +
+    (filters.to ? 1 : 0);
+  const isDirty = activeFilterCount > 0;
+
   return (
     <div className="space-y-4">
-      <Card className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-primary-600" />
-            <h2 className="text-sm font-semibold text-surface-900">Filter Pendampingan</h2>
-          </div>
-          <Button
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-haspopup="dialog"
+          className={cn(
+            'flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium',
+            activeFilterCount > 0
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-surface-300 bg-white text-surface-700'
+          )}
+        >
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+          Filter
+          {activeFilterCount > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-bold text-surface-900">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+
+        {isDirty && (
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={resetFilters}
+            aria-label="Reset filter"
             title="Reset filter"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100"
           >
-            <RotateCcw className="h-4 w-4" />
-            <span>Reset</span>
-          </Button>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Select
-            id="mentoring-branch-filter"
-            label="Cabang"
-            value={filters.branchId}
-            onChange={(event) =>
-              updateFilters({ ...filters, branchId: event.target.value, outletId: '' })
-            }
-            options={[
-              { value: '', label: 'Semua cabang' },
-              ...branches.map((branch) => ({ value: branch.id, label: branch.name })),
-            ]}
-          />
-          <Select
-            id="mentoring-outlet-filter"
-            label="Outlet"
-            value={filters.outletId}
-            onChange={(event) =>
-              updateFilters({ ...filters, outletId: event.target.value })
-            }
-            options={[
-              { value: '', label: 'Semua outlet' },
-              ...visibleOutlets.map((outlet) => ({ value: outlet.id, label: outlet.name })),
-            ]}
-          />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            id="mentoring-from-filter"
-            label="Dari tanggal"
-            type="date"
-            value={filters.from}
-            onChange={(event) =>
-              updateFilters({ ...filters, from: event.target.value })
-            }
-          />
-          <Input
-            id="mentoring-to-filter"
-            label="Sampai tanggal"
-            type="date"
-            value={filters.to}
-            onChange={(event) => updateFilters({ ...filters, to: event.target.value })}
-          />
-        </div>
-
-        {dateRangeError && (
-          <p className="text-xs text-danger-600">
-            Tanggal mulai tidak boleh setelah tanggal akhir.
-          </p>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          </button>
         )}
-      </Card>
+      </div>
+
+      {dateRangeError && (
+        <p className="text-xs text-danger-600">
+          Tanggal mulai tidak boleh setelah tanggal akhir.
+        </p>
+      )}
 
       {loading && <SessionListSkeleton />}
 
@@ -359,6 +338,61 @@ export function MentoringList({
           )}
         </div>
       )}
+
+      <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Filter pendampingan">
+        <div className="space-y-4">
+          <Select
+            id="mentoring-branch-filter"
+            label="Cabang"
+            value={filters.branchId}
+            onChange={(event) =>
+              updateFilters({ ...filters, branchId: event.target.value, outletId: '' })
+            }
+            options={[
+              { value: '', label: 'Semua cabang' },
+              ...branches.map((branch) => ({ value: branch.id, label: branch.name })),
+            ]}
+          />
+          <Select
+            id="mentoring-outlet-filter"
+            label="Outlet"
+            value={filters.outletId}
+            onChange={(event) =>
+              updateFilters({ ...filters, outletId: event.target.value })
+            }
+            options={[
+              { value: '', label: 'Semua outlet' },
+              ...visibleOutlets.map((outlet) => ({ value: outlet.id, label: outlet.name })),
+            ]}
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              id="mentoring-from-filter"
+              label="Dari tanggal"
+              type="date"
+              value={filters.from}
+              onChange={(event) =>
+                updateFilters({ ...filters, from: event.target.value })
+              }
+            />
+            <Input
+              id="mentoring-to-filter"
+              label="Sampai tanggal"
+              type="date"
+              value={filters.to}
+              onChange={(event) => updateFilters({ ...filters, to: event.target.value })}
+            />
+          </div>
+          {dateRangeError && (
+            <p className="text-xs text-danger-600">
+              Tanggal mulai tidak boleh setelah tanggal akhir.
+            </p>
+          )}
+          <Button type="button" fullWidth onClick={() => setSheetOpen(false)}>
+            Terapkan
+          </Button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }
