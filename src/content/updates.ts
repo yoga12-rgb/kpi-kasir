@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.15',
+    date: '2026-08-14',
+    title: 'Perbaikan tampilan leaderboard',
+    summary:
+      'Bar kontrol leaderboard kini membungkus dengan benar di layar sempit sehingga tidak lagi meluap ke samping.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Memperbaiki bar kontrol agar tidak menimbulkan geser horizontal pada iPhone.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.14',
     date: '2026-08-14',
     title: 'Bottom Sheet responsif',

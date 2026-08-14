@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.15] - 2026-08-14
+
+### Fixed
+
+- Memperbaiki bar kontrol leaderboard yang meluap secara horizontal pada layar sempit sehingga halaman tidak lagi dapat digeser ke kiri/kanan dan tombol ekspor/reset tetap tampil penuh.
+
 ## [0.2.14] - 2026-08-14
 
 ### Changed

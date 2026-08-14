@@ -271,7 +271,7 @@ export function LeaderboardView({
   return (
     <div className="space-y-4">
       {/* Bar kontrol ringkas */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setSheet('scope')}
