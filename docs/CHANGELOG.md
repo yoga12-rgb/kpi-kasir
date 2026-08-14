@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.7] - 2026-08-14
+
+### Fixed
+
+- Menambahkan metadata Apple khusus dan URL aset berversi agar layar sambut iOS diperbarui secara konsisten saat aplikasi dibuka dari layar utama.
+
 ## [0.2.6] - 2026-08-14
 
 ### Added

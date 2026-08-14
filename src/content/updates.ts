@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.7',
+    date: '2026-08-14',
+    title: 'Kompatibilitas layar sambut iOS',
+    summary:
+      'Layar sambut iOS kini memakai metadata Apple khusus dan aset berversi agar pembaruan tampil lebih konsisten.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Memperkuat dukungan layar sambut saat aplikasi dibuka dari layar utama iPhone.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.6',
     date: '2026-08-14',
     title: 'Layar sambut iOS',
