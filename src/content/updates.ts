@@ -16,6 +16,24 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.11',
+    date: '2026-08-14',
+    title: 'Penyempurnaan Leaderboard',
+    summary:
+      'Halaman peringkat kini lebih konsisten, aksesibel, dan informatif tentang status periode.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Empty state, skeleton loading, dan status pilihan segmen disamakan dengan halaman lain.',
+          'Filter periode hanya muncul pada mode skor periode.',
+          'Menampilkan penanda saat skor periode telah terkunci.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.10',
     date: '2026-08-14',
     title: 'Penyempurnaan pendampingan',

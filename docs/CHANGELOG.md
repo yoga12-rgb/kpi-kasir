@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.11] - 2026-08-14
+
+### Changed
+
+- Merapikan halaman leaderboard: empty state konsisten, status pilihan segmen aksesibel, filter periode hanya tampil saat relevan, skeleton loading, dan penanda skor terkunci pada periode tertutup.
+
 ## [0.2.10] - 2026-08-14
 
 ### Changed

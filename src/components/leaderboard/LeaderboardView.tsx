@@ -2,12 +2,12 @@
 
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ChevronDown, Download, Medal, RotateCcw, Trophy } from 'lucide-react';
+import { ChevronDown, Download, Lock, Medal, RotateCcw, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CashierAvatar } from '@/components/cashiers/CashierAvatar';
 import Button from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Spinner } from '@/components/ui/Feedback';
+import { EmptyState, Skeleton, Spinner } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Form';
 import { cn } from '@/lib/cn';
 import { appQueryKeys } from '@/lib/client/query-keys';
@@ -70,6 +70,25 @@ function getErrorMessage(payload: unknown) {
     if (typeof message === 'string') return message;
   }
   return 'Gagal memuat leaderboard';
+}
+
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-2" role="status" aria-label="Memuat leaderboard">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="p-3">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+            <Skeleton className="h-5 w-12" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 export function LeaderboardView({
@@ -236,6 +255,7 @@ export function LeaderboardView({
               setBranchId('');
               setOutletId('');
             }}
+            aria-pressed={level === item}
             className={cn(
               'rounded-xl border px-3 py-2 text-xs font-medium transition-colors',
               level === item
@@ -295,16 +315,18 @@ export function LeaderboardView({
         />
       )}
 
-      <Select
-        id="leaderboard-period-filter"
-        label="Periode"
-        value={periodId}
-        onChange={(event) => setPeriodId(event.target.value)}
-        options={periods.map((period) => ({
-          value: period.id,
-          label: `${period.label} (${period.status === 'open' ? 'aktif' : 'ditutup'})`,
-        }))}
-      />
+      {mode === 'period' && (
+        <Select
+          id="leaderboard-period-filter"
+          label="Periode"
+          value={periodId}
+          onChange={(event) => setPeriodId(event.target.value)}
+          options={periods.map((period) => ({
+            value: period.id,
+            label: `${period.label} (${period.status === 'open' ? 'aktif' : 'ditutup'})`,
+          }))}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         {(['period', 'cumulative'] as const).map((item) => (
@@ -312,6 +334,7 @@ export function LeaderboardView({
             key={item}
             type="button"
             onClick={() => setMode(item)}
+            aria-pressed={mode === item}
             className={cn(
               'rounded-xl border px-3 py-2 text-xs font-medium transition-colors',
               mode === item
@@ -351,11 +374,15 @@ export function LeaderboardView({
         </Button>
       </div>
 
-      {loading && (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
-      )}
+      {mode === 'period' &&
+        periods.find((period) => period.id === periodId)?.status === 'closed' && (
+          <p className="flex items-center gap-1.5 rounded-lg border border-surface-200 bg-surface-100 px-3 py-2 text-xs text-surface-500">
+            <Lock className="h-3.5 w-3.5 text-surface-400" aria-hidden="true" />
+            Skor periode ini telah dikunci.
+          </p>
+        )}
+
+      {loading && <LeaderboardSkeleton />}
 
       {error && (
         <div className="space-y-2 text-center">
@@ -372,7 +399,10 @@ export function LeaderboardView({
       )}
 
       {!loading && !error && rows.length === 0 && (
-        <p className="py-8 text-center text-sm text-surface-500">Belum ada data leaderboard.</p>
+        <EmptyState
+          title="Belum ada data leaderboard"
+          description="Ubah filter atau nantikan penilaian kasir masuk."
+        />
       )}
 
       {!loading && rows.length > 0 && (
