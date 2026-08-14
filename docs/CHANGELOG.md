@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.14] - 2026-08-14
+
+### Changed
+
+- Bottom Sheet kini dapat ditutup dengan gesture geser ke bawah di perangkat sentuh, dan tampil sebagai modal terpusat pada layar desktop/tablet.
+
 ## [0.2.13] - 2026-08-14
 
 ### Changed

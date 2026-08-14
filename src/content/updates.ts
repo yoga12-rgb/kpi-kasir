@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.14',
+    date: '2026-08-14',
+    title: 'Bottom Sheet responsif',
+    summary:
+      'Bottom Sheet kini responsif: bisa ditutup dengan geser ke bawah di layar sentuh, dan tampil sebagai modal terpusat di desktop/tablet.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Menambahkan gesture swipe ke bawah untuk menutup Bottom Sheet.',
+          'Mengubah tampilan Bottom Sheet menjadi modal terpusat pada layar desktop dan tablet.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.13',
     date: '2026-08-14',
     title: 'Leaderboard lebih fokus',

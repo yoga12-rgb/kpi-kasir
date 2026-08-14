@@ -16,6 +16,13 @@ export interface BottomSheetProps {
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const dragStartYRef = useRef<number | null>(null);
+  const dragYRef = useRef(0);
+  const [dragY, setDragY] = useState(0);
+
+  useEffect(() => {
+    if (!open) setDragY(0);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -63,13 +70,50 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     };
   }, [onClose, open]);
 
+  const closeThreshold = 100;
+
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const sheet = dialogRef.current;
+    if (!sheet || sheet.scrollTop > 0) {
+      dragStartYRef.current = null;
+      return;
+    }
+    dragStartYRef.current = event.touches[0].clientY;
+  }
+
+  function handleTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    if (dragStartYRef.current === null) return;
+    const delta = event.touches[0].clientY - dragStartYRef.current;
+    dragYRef.current = delta > 0 ? delta : 0;
+    setDragY(dragYRef.current);
+  }
+
+  function handleTouchEnd() {
+    if (dragStartYRef.current !== null && dragYRef.current >= closeThreshold) {
+      onClose();
+    }
+    dragStartYRef.current = null;
+    dragYRef.current = 0;
+    setDragY(0);
+  }
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 md:items-center md:p-4"
+      onClick={onClose}
+    >
       <div
         ref={dialogRef}
-        className="max-h-[85vh] w-full max-w-app overflow-y-auto rounded-t-2xl bg-white p-5 shadow-sheet"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: dragY > 0 ? `translateY(${dragY}px)` : 'translateY(0)',
+          transition: dragY > 0 ? 'none' : 'transform 180ms ease-out',
+        }}
+        className="max-h-[85vh] w-full max-w-app overflow-y-auto rounded-t-2xl bg-white p-5 shadow-sheet md:max-w-lg md:rounded-2xl md:shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -77,7 +121,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
         aria-label={title ? undefined : 'Dialog'}
         tabIndex={-1}
       >
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-300" />
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-surface-300 md:hidden" />
         {title && (
           <h2 id={titleId} className="mb-4 text-lg font-semibold text-surface-900">
             {title}
