@@ -16,6 +16,24 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.10',
+    date: '2026-08-14',
+    title: 'Penyempurnaan pendampingan',
+    summary:
+      'Daerah dan detail pendampingan kini menampilkan konteks, pelaksana, dan jumlah kasir agar lebih mudah dipindai.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Menampilkan jumlah kasir, tanggal, dan pelaksana pada daftar sesi pendampingan.',
+          'Menampilkan nama cabang pada halaman detail sesi.',
+          'Menambahkan ikon pada catatan kosong dan keterangan unggah foto yang belum aktif.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.9',
     date: '2026-08-14',
     title: 'Ikon catatan pendampingan',

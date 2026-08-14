@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
-import { Store, Users } from 'lucide-react';
+import { ImageOff, MessageSquareOff, Store, Users } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { BackLink } from '@/components/navigation/BackLink';
 import { MentoringEvidenceGallery } from '@/components/mentoring/MentoringEvidenceGallery';
@@ -28,7 +28,7 @@ export default async function MentoringDetailPage({
     supabase
       .from('mentoring_session')
       .select(
-        'id, visited_date, note_outlet, outlet(name, branch_id), conducted_by, conductor:conducted_by(full_name)'
+        'id, visited_date, note_outlet, outlet(name, branch_id, branch(name)), conducted_by, conductor:conducted_by(full_name)'
       )
       .eq('id', id)
       .single(),
@@ -40,7 +40,11 @@ export default async function MentoringDetailPage({
 
   if (!session) notFound();
 
-  const outlet = session.outlet as unknown as { branch_id: string; name: string };
+  const outlet = session.outlet as unknown as {
+    branch_id: string;
+    name: string;
+    branch?: { name?: string | null } | null;
+  };
 
   // Cek akses non-admin
   if (profile.role !== 'admin') {
@@ -79,6 +83,7 @@ export default async function MentoringDetailPage({
 
       <h1 className="mt-2 text-xl font-bold text-surface-900">{outlet.name}</h1>
       <p className="text-sm text-surface-500">
+        {outlet.branch?.name ? `${outlet.branch.name} · ` : ''}
         {formatDate(session.visited_date)} · oleh{' '}
         {(session.conductor as unknown as { full_name?: string })?.full_name ?? '-'}
       </p>
@@ -108,7 +113,10 @@ export default async function MentoringDetailPage({
             </div>
           ))}
           {(notes ?? []).length === 0 && (
-            <p className="text-sm text-surface-500">Tidak ada catatan per kasir.</p>
+            <p className="flex items-center gap-1.5 text-sm text-surface-500">
+              <MessageSquareOff className="h-4 w-4 text-surface-400" aria-hidden="true" />
+              Tidak ada catatan per kasir.
+            </p>
           )}
         </div>
       </Card>
@@ -119,6 +127,13 @@ export default async function MentoringDetailPage({
             existingCount={evidenceItems.length}
             sessionId={session.id}
           />
+        )}
+      {process.env.MENTORING_EVIDENCE_UPLOAD_ENABLED !== 'true' &&
+        (profile.role === 'admin' || profile.id === session.conducted_by) && (
+          <p className="mt-3 flex items-center gap-1.5 text-xs text-surface-400">
+            <ImageOff className="h-3.5 w-3.5" aria-hidden="true" />
+            Unggah bukti foto belum diaktifkan.
+          </p>
         )}
     </div>
   );

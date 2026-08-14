@@ -122,7 +122,7 @@ async function handleGET(request: Request) {
   let query = supabase
     .from('mentoring_session')
     .select(
-      'id, outlet_id, visited_date, note_outlet, created_at, updated_at, outlet!inner(name, branch_id), conducted_by(full_name)'
+      'id, outlet_id, visited_date, note_outlet, created_at, updated_at, outlet!inner(name, branch_id), conducted_by(full_name), mentoring_cashier_note(count)'
     )
     .in('outlet.branch_id', branchIds)
     .order('visited_date', { ascending: false })

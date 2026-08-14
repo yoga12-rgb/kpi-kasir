@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.10] - 2026-08-14
+
+### Changed
+
+- Menampilkan jumlah kasir, tanggal, pelaksana, dan konteks cabang pada daftar serta detail pendampingan agar lebih mudah dipindai.
+- Menambahkan ikon pada catatan kosong dan keterangan saat unggah bukti foto belum diaktifkan.
+
 ## [0.2.9] - 2026-08-14
 
 ### Changed
