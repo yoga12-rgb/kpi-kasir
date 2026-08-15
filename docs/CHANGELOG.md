@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.22] - 2026-08-15
+
+### Fixed
+
+- Memperbaiki perilaku Bottom Sheet yang memindahkan fokus dan menutup keyboard saat mengetik pada kolom pencarian (focus trap tidak lagi berjalan ulang saat isi input berubah).
+
 ## [0.2.21] - 2026-08-15
 
 ### Changed

@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.22',
+    date: '2026-08-15',
+    title: 'Perbaikan ketik di Bottom Sheet',
+    summary:
+      'Mengetik pada kolom pencarian di dalam Bottom Sheet tidak lagi memindahkan fokus atau menutup keyboard di perangkat sentuh.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Focus trap pada Bottom Sheet tidak berjalan ulang saat isi input berubah.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.21',
     date: '2026-08-15',
     title: 'Kenyamanan input password dan navigasi',

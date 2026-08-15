@@ -19,6 +19,11 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
   const dragStartYRef = useRef<number | null>(null);
   const dragYRef = useRef(0);
   const [dragY, setDragY] = useState(0);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) setDragY(0);
@@ -43,7 +48,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !dialog) return;
@@ -74,7 +79,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
       document.body.style.overscrollBehavior = previousBodyOverscroll;
       if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
     };
-  }, [onClose, open]);
+  }, [open]);
 
   const closeThreshold = 100;
 
