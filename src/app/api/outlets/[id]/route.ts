@@ -42,7 +42,7 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ outlet: data });
   }
 
-  const supabase = profile.role === 'admin' ? await createAdminClient() : await createClient();
+  const supabase = await createClient();
   const { data: currentOutlet, error: currentOutletError } = await supabase
     .from('outlet')
     .select('id, branch_id')
@@ -86,7 +86,8 @@ async function handlePATCH(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
   }
 
-  const { error } = await supabase.from('outlet').update(update).eq('id', id);
+  const writeClient = profile.role === 'admin' ? await createAdminClient() : supabase;
+  const { error } = await writeClient.from('outlet').update(update).eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ outlet: { id, ...update } });

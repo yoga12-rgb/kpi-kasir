@@ -16,6 +16,20 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.20',
+    date: '2026-08-15',
+    title: 'Pengerasan keamanan outlet',
+    summary:
+      'Pembacaan outlet pada proses edit kini memakai izin berbasis peran, bukan token layanan, demi prinsip hak akses minimal.',
+    sections: [
+      {
+        category: 'security',
+        label: 'Keamanan',
+        items: ['Memisahkan pembacaan outlet dari token layanan pada endpoint edit.'],
+      },
+    ],
+  },
+  {
     version: '0.2.19',
     date: '2026-08-14',
     title: 'Antrean penilaian dan filter yang konsisten',

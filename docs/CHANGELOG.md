@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.20] - 2026-08-15
+
+### Security
+
+- Memisahkan pembacaan outlet pada endpoint edit agar memakai client berbasis RLS (bukan service-role), sesuai prinsip least-privilege.
+
 ## [0.2.19] - 2026-08-14
 
 ### Added
