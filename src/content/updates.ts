@@ -16,6 +16,23 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.21',
+    date: '2026-08-15',
+    title: 'Kenyamanan input password dan navigasi',
+    summary:
+      'Kolom password kini memiliki ikon mata untuk melihat isinya, dan tombol kembali ditampilkan sebagai tombol bulat berisi panah.',
+    sections: [
+      {
+        category: 'changed',
+        label: 'Perubahan',
+        items: [
+          'Menambahkan ikon mata untuk menampilkan/menyembunyikan password.',
+          'Tombol kembali kini berupa tombol bulat berisi panah tanpa teks.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.20',
     date: '2026-08-15',
     title: 'Pengerasan keamanan outlet',

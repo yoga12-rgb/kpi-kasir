@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.21] - 2026-08-15
+
+### Changed
+
+- Menambahkan ikon mata pada kolom password untuk menampilkan/menyembunyikan isinya.
+- Menyederhanakan tombol kembali menjadi tombol bulat berisi panah tanpa teks di seluruh halaman.
+
 ## [0.2.20] - 2026-08-15
 
 ### Security

@@ -1,6 +1,10 @@
+'use client';
+
+import { Eye, EyeOff } from 'lucide-react';
 import {
   forwardRef,
   useId,
+  useState,
   type InputHTMLAttributes,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
@@ -21,10 +25,12 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, id, ...props }, ref) => {
+  ({ className, label, error, id, type = 'text', ...props }, ref) => {
     const generatedId = useId();
     const inputId = id ?? `input-${generatedId}`;
     const errorId = `${inputId}-error`;
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = type === 'password';
 
     return (
       <div>
@@ -33,14 +39,37 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          {...props}
-          id={inputId}
-          ref={ref}
-          className={cn('input', error && 'border-danger-500', className)}
-          aria-invalid={error ? true : props['aria-invalid']}
-          aria-describedby={describedBy(props['aria-describedby'], error, errorId)}
-        />
+        <div className={cn(isPassword && 'relative')}>
+          <input
+            {...props}
+            id={inputId}
+            ref={ref}
+            type={isPassword && showPassword ? 'text' : type}
+            className={cn(
+              'input',
+              isPassword && 'pr-10',
+              error && 'border-danger-500',
+              className
+            )}
+            aria-invalid={error ? true : props['aria-invalid']}
+            aria-describedby={describedBy(props['aria-describedby'], error, errorId)}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 transition-colors hover:text-surface-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Eye className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          )}
+        </div>
         {error && (
           <p id={errorId} className="mt-1 text-xs text-danger-600" role="alert">
             {error}
