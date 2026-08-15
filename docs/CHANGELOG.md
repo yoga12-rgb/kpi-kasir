@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.23] - 2026-08-15
+
+### Fixed
+
+- Memperbaiki tata letak bar filter leaderboard di layar sempit agar tombol "Filter" tetap sejajar dan tidak terlempar ke baris bawah saat penanda jumlah filter muncul.
+
 ## [0.2.22] - 2026-08-15
 
 ### Fixed

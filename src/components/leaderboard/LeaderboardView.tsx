@@ -413,10 +413,10 @@ export function LeaderboardView({
           type="button"
           onClick={() => setSheet('scope')}
           aria-haspopup="dialog"
-          className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-surface-300 bg-white px-3 text-xs font-medium text-surface-700"
+          className="flex h-10 min-w-0 items-center gap-1.5 rounded-xl border border-surface-300 bg-white px-3 text-xs font-medium text-surface-700"
         >
-          {scopeLabel}
-          <ChevronDown className="h-4 w-4 text-surface-400" aria-hidden="true" />
+          <span className="truncate">{scopeLabel}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-surface-400" aria-hidden="true" />
         </button>
 
         <div

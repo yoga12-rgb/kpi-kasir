@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.2.23',
+    date: '2026-08-15',
+    title: 'Perbaikan tata letak filter leaderboard',
+    summary:
+      'Tombol Filter pada leaderboard tetap sejajar dan tidak terlempar ke baris bawah saat penanda jumlah filter aktif muncul.',
+    sections: [
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Chip cakupan kini dapat menyesuaikan lebar agar tombol Filter tetap pada baris yang sama.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.22',
     date: '2026-08-15',
     title: 'Perbaikan ketik di Bottom Sheet',
