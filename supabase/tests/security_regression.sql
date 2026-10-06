@@ -357,13 +357,26 @@ select pg_temp.assert_true(
 
 select pg_temp.assert_true(
   (select relrowsecurity from pg_class where oid = 'public.mentoring_evidence'::regclass)
-  and has_table_privilege('anon', 'public.mentoring_evidence', 'select') = false
-  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'select')
-  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'insert') = false
-  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'update') = false
-  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'delete') = false
-  and has_table_privilege('service_role', 'public.mentoring_evidence', 'select'),
-  'mentoring evidence harus memakai RLS dan mutasi hanya boleh melalui service role'
+  'mentoring evidence harus memakai RLS'
+);
+
+select pg_temp.assert_true(
+  has_table_privilege('anon', 'public.mentoring_evidence', 'select, insert, update, delete, truncate, references, trigger') = false,
+  'anon tidak boleh mengakses mentoring evidence'
+);
+
+select pg_temp.assert_true(
+  has_table_privilege('authenticated', 'public.mentoring_evidence', 'select')
+  and has_table_privilege('authenticated', 'public.mentoring_evidence', 'insert, update, delete, truncate, references, trigger') = false,
+  'authenticated hanya boleh membaca mentoring evidence melalui RLS'
+);
+
+select pg_temp.assert_true(
+  has_table_privilege('service_role', 'public.mentoring_evidence', 'select')
+  and has_table_privilege('service_role', 'public.mentoring_evidence', 'insert')
+  and has_table_privilege('service_role', 'public.mentoring_evidence', 'update')
+  and has_table_privilege('service_role', 'public.mentoring_evidence', 'delete'),
+  'mentoring evidence harus dapat dimutasi melalui service role'
 );
 
 select pg_temp.assert_true(

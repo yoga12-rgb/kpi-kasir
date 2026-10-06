@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1] - 2026-10-06
+
+### Security
+
+- Mencabut akses baca anonim pada tabel bukti pendampingan dan mempertahankan akses tulis hanya melalui service role.
+- Memperbarui dependensi Next.js, Sharp, dan dependensi transitif yang terdeteksi dalam audit keamanan produksi.
+
 ## [0.3.0] - 2026-10-06
 
 ### Added

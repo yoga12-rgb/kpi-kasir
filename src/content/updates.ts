@@ -16,6 +16,22 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.3.1',
+    date: '2026-10-06',
+    title: 'Peningkatan keamanan bukti pendampingan',
+    summary:
+      'Akses bukti foto pendampingan diperketat dan komponen server diperbarui untuk menjaga keamanan aplikasi.',
+    sections: [
+      {
+        category: 'security',
+        label: 'Keamanan',
+        items: [
+          'Membatasi akses tabel bukti pendampingan sesuai peran dan memperbarui dependensi server berdasarkan audit keamanan.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.3.0',
     date: '2026-10-06',
     title: 'Ekspor peringkat ke Excel',
