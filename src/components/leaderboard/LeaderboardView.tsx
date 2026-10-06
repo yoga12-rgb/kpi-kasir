@@ -234,12 +234,12 @@ export function LeaderboardView({
   }, [searchInput]);
 
   const buildParams = useCallback(
-    (format: 'json' | 'csv') => {
+    (format: 'json' | 'xlsx') => {
       const params = new URLSearchParams({
         level,
         mode,
         format,
-        limit: format === 'csv' ? '5000' : String(PAGE_SIZE),
+        limit: String(PAGE_SIZE),
       });
       if (periodId) params.set('periodId', periodId);
       if (branchId) params.set('branchId', branchId);
@@ -278,6 +278,7 @@ export function LeaderboardView({
   const requestKey = buildParams('json').toString();
   useEffect(() => {
     setExpandedCashierId(null);
+    setExportError(null);
   }, [requestKey]);
 
   const initialPage = useMemo<LeaderboardResponse | undefined>(() => {
@@ -311,7 +312,7 @@ export function LeaderboardView({
   }, [leaderboardQuery.data]);
   const loading = leaderboardQuery.isPending;
   const loadingMore = leaderboardQuery.isFetchingNextPage;
-  const error = leaderboardQuery.error?.message ?? exportError;
+  const error = leaderboardQuery.error?.message;
   const hasMore = leaderboardQuery.hasNextPage ?? false;
 
   const loadMore = useCallback(() => {
@@ -319,11 +320,11 @@ export function LeaderboardView({
     void leaderboardQuery.fetchNextPage();
   }, [hasMore, leaderboardQuery, loading, loadingMore]);
 
-  async function exportCsv() {
+  async function exportExcel() {
     setExporting(true);
     setExportError(null);
     try {
-      const response = await fetch(`/api/leaderboard?${buildParams('csv').toString()}`, {
+      const response = await fetch(`/api/leaderboard?${buildParams('xlsx').toString()}`, {
         cache: 'no-store',
       });
       if (!response.ok) {
@@ -335,9 +336,11 @@ export function LeaderboardView({
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = 'leaderboard.csv';
+      anchor.download =
+        response.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] ??
+        'leaderboard.xlsx';
       anchor.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (reason: unknown) {
       setExportError(reason instanceof Error ? reason.message : 'Gagal mengekspor leaderboard');
     } finally {
@@ -381,10 +384,10 @@ export function LeaderboardView({
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            onClick={exportCsv}
+            onClick={exportExcel}
             disabled={exporting}
-            aria-label="Ekspor CSV"
-            title="Ekspor CSV"
+            aria-label="Ekspor Excel"
+            title="Ekspor Excel"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-surface-300 bg-white text-surface-600 transition-colors hover:bg-surface-100 disabled:opacity-50"
           >
             {exporting ? (
@@ -406,6 +409,23 @@ export function LeaderboardView({
           )}
         </div>
       </div>
+
+      {exportError && (
+        <div
+          role="alert"
+          className="bg-danger-50 flex items-center justify-between gap-3 rounded-xl p-3"
+        >
+          <p className="text-sm text-danger-600">{exportError}</p>
+          <button
+            type="button"
+            onClick={() => setExportError(null)}
+            aria-label="Tutup pesan ekspor"
+            className="shrink-0 text-xs font-medium text-danger-600 underline"
+          >
+            Tutup
+          </button>
+        </div>
+      )}
 
       {/* Bar kontrol ringkas */}
       <div className="flex flex-wrap items-center gap-2">

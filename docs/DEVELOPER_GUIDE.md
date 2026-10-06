@@ -272,7 +272,9 @@ live, sehingga perubahan nama/aktif/parameter tidak mengubah periode yang sudah 
 
 `GET /api/mentoring-sessions` memakai cursor berdasarkan `visited_date` dan `id`, limit 1-50,
 filter cabang/outlet/tanggal, dan infinite scroll di client. `GET /api/leaderboard` memakai cursor
-berdasarkan score dan cashier ID, search nama server-side, serta `format=csv` untuk export terkontrol.
+berdasarkan score dan cashier ID serta search nama server-side. Export peringkat memakai
+`format=xlsx` untuk enam kolom nama, outlet, dan persentase empat indikator; `format=csv` tetap
+tersedia untuk kompatibilitas.
 
 Daftar cashier, branch, outlet, dan user memakai `page` offset bounded (default 25, maksimal 100 per
 API request) serta filter nama/kode/email server-side. Halaman hanya membuat signed avatar URL untuk

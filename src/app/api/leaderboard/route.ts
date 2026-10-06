@@ -4,6 +4,11 @@ import { requirePermission } from '@/lib/auth/guards';
 import { withApiRoute } from '@/lib/api/route';
 import { decodeLeaderboardCursor, encodeLeaderboardCursor } from '@/lib/leaderboard/cursor';
 import {
+  collectLeaderboardExportRows,
+  LeaderboardExportLimitError,
+  LeaderboardExportPaginationError,
+} from '@/lib/leaderboard/export-pages';
+import {
   LeaderboardIndicatorScore,
   normalizeIndicatorScores,
 } from '@/lib/leaderboard/indicator-scores';
@@ -11,6 +16,12 @@ import { getCashierAvatarUrls } from '@/lib/storage/cashier-avatar';
 import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Request one more row than each page to detect whether another page exists
+// even when PostgREST limits a query result to 1,000 rows.
+const EXCEL_PAGE_SIZE = 999;
+const MAX_EXCEL_ROWS = 10_000;
 
 interface LeaderboardRow {
   cashier_id: string;
@@ -38,7 +49,7 @@ const optionalSearch = z.preprocess(
 const leaderboardQuerySchema = z.object({
   level: z.enum(['global', 'branch', 'outlet']).default('global'),
   mode: z.enum(['period', 'cumulative']).default('period'),
-  format: z.enum(['json', 'csv']).default('json'),
+  format: z.enum(['json', 'csv', 'xlsx']).default('json'),
   limit: z.coerce.number().int().min(1).max(5000).default(25),
   cursor: z.string().optional(),
   search: optionalSearch,
@@ -72,7 +83,74 @@ function csvResponse(rows: LeaderboardRow[], label: string | null, mode: string)
   });
 }
 
-async function handleGET(request: Request) {
+class LeaderboardExportPageError extends Error {
+  constructor(readonly response: NextResponse) {
+    super('Gagal memuat halaman ekspor leaderboard');
+  }
+}
+
+async function xlsxResponse(
+  request: Request,
+  label: string | null,
+  mode: string,
+  periodId?: string
+) {
+  const url = new URL(request.url);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('limit', String(EXCEL_PAGE_SIZE));
+  url.searchParams.delete('cursor');
+  if (periodId) url.searchParams.set('periodId', periodId);
+
+  let rows: LeaderboardRow[];
+  try {
+    rows = await collectLeaderboardExportRows<LeaderboardRow>(async (cursor) => {
+      if (cursor) url.searchParams.set('cursor', cursor);
+      const pageResponse = await getLeaderboard(
+        new Request(url, { headers: request.headers }),
+        true
+      );
+      if (!pageResponse.ok) throw new LeaderboardExportPageError(pageResponse);
+      return (await pageResponse.json()) as {
+        rows: LeaderboardRow[];
+        hasMore: boolean;
+        nextCursor: string | null;
+      };
+    }, MAX_EXCEL_ROWS);
+  } catch (error) {
+    if (error instanceof LeaderboardExportPageError) return error.response;
+    if (error instanceof LeaderboardExportLimitError) {
+      return NextResponse.json(
+        { error: 'Ekspor Excel dibatasi hingga 10.000 kasir. Persempit filter lalu coba lagi.' },
+        { status: 413 }
+      );
+    }
+    if (error instanceof LeaderboardExportPaginationError) {
+      return NextResponse.json({ error: 'Gagal memuat seluruh data leaderboard' }, { status: 500 });
+    }
+    throw error;
+  }
+
+  const { createLeaderboardWorkbook } = await import('@/lib/leaderboard/excel');
+  const workbook = createLeaderboardWorkbook(rows, {
+    indicatorReferencePeriod: mode === 'cumulative' ? (label ?? 'terpilih') : undefined,
+  });
+  const bytes = new Uint8Array(await workbook.toBuffer());
+  const safeLabel = (label ?? mode).replace(/[^a-zA-Z0-9_-]+/g, '-');
+  const filename =
+    mode === 'cumulative'
+      ? `leaderboard-akumulatif-referensi-${safeLabel}.xlsx`
+      : `leaderboard-${safeLabel}.xlsx`;
+
+  return new NextResponse(bytes, {
+    headers: {
+      'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'content-disposition': `attachment; filename="${filename}"`,
+      'cache-control': 'no-store',
+    },
+  });
+}
+
+async function getLeaderboard(request: Request, internalExcelPage: boolean): Promise<NextResponse> {
   const profile = await requirePermission('leaderboard');
   const { searchParams } = new URL(request.url);
   const parsedQuery = leaderboardQuerySchema.safeParse(Object.fromEntries(searchParams.entries()));
@@ -92,8 +170,11 @@ async function handleGET(request: Request) {
     periodId,
   } = parsedQuery.data;
 
-  if (format === 'json' && requestedLimit > 100) {
-    return NextResponse.json({ error: 'Limit JSON maksimal 100' }, { status: 400 });
+  if (format === 'json' && requestedLimit > (internalExcelPage ? EXCEL_PAGE_SIZE : 100)) {
+    return NextResponse.json(
+      { error: internalExcelPage ? 'Limit JSON tidak valid' : 'Limit JSON maksimal 100' },
+      { status: 400 }
+    );
   }
   if (level === 'global' && (branchId || outletId)) {
     return NextResponse.json(
@@ -180,9 +261,14 @@ async function handleGET(request: Request) {
   }
 
   if (accessibleBranchIds.length === 0) {
-    return format === 'csv'
-      ? csvResponse([], selectedPeriodLabel, mode)
-      : NextResponse.json({ rows: [], nextCursor: null, hasMore: false });
+    if (format === 'csv') return csvResponse([], selectedPeriodLabel, mode);
+    if (format === 'xlsx')
+      return xlsxResponse(request, selectedPeriodLabel, mode, selectedPeriodId);
+    return NextResponse.json({ rows: [], nextCursor: null, hasMore: false });
+  }
+
+  if (format === 'xlsx') {
+    return xlsxResponse(request, selectedPeriodLabel, mode, selectedPeriodId);
   }
 
   const searchPattern = search ? `%${escapeIlike(search)}%` : null;
@@ -198,7 +284,7 @@ async function handleGET(request: Request) {
       .in('branch_id', accessibleBranchIds)
       .eq('period_id', selectedPeriodId);
 
-    if (level === 'branch' && branchId) query = query.eq('branch_id', branchId);
+    if (level !== 'global' && branchId) query = query.eq('branch_id', branchId);
     if (level === 'outlet' && outletId) query = query.eq('outlet_id', outletId);
     if (searchPattern) query = query.ilike('cashier_name', searchPattern);
     if (cursor) {
@@ -241,7 +327,7 @@ async function handleGET(request: Request) {
       .eq('period_id', selectedPeriodId)
       .in('cashier.outlet.branch_id', accessibleBranchIds);
 
-    if (level === 'branch' && branchId) query = query.eq('cashier.outlet.branch_id', branchId);
+    if (level !== 'global' && branchId) query = query.eq('cashier.outlet.branch_id', branchId);
     if (level === 'outlet' && outletId) query = query.eq('cashier.outlet_id', outletId);
     if (searchPattern) query = query.ilike('cashier.name', searchPattern);
     if (cursor) {
@@ -286,7 +372,7 @@ async function handleGET(request: Request) {
       )
       .in('cashier.outlet.branch_id', accessibleBranchIds);
 
-    if (level === 'branch' && branchId) query = query.eq('cashier.outlet.branch_id', branchId);
+    if (level !== 'global' && branchId) query = query.eq('cashier.outlet.branch_id', branchId);
     if (level === 'outlet' && outletId) query = query.eq('cashier.outlet_id', outletId);
     if (searchPattern) query = query.ilike('cashier.name', searchPattern);
     if (cursor) {
@@ -333,28 +419,30 @@ async function handleGET(request: Request) {
   // reference period rather than presenting it as a cumulative breakdown.
   if (mode === 'cumulative' && selectedPeriodId && pageRows.length > 0) {
     const cashierIds = pageRows.map((row) => row.cashier_id);
-    const detailQuery =
-      selectedPeriodStatus === 'closed'
-        ? supabase
-            .from('leaderboard_entry')
-            .select('cashier_id, category_scores')
-            .eq('period_id', selectedPeriodId)
-            .in('cashier_id', cashierIds)
-        : supabase
-            .from('cashier_period_score')
-            .select('cashier_id, category_scores')
-            .eq('period_id', selectedPeriodId)
-            .in('cashier_id', cashierIds);
-    const { data: detailRows, error: detailError } = await detailQuery;
-    if (detailError) {
+    const detailResults = await Promise.all(
+      Array.from({ length: Math.ceil(cashierIds.length / 100) }, (_, index) => {
+        const ids = cashierIds.slice(index * 100, (index + 1) * 100);
+        return selectedPeriodStatus === 'closed'
+          ? supabase
+              .from('leaderboard_entry')
+              .select('cashier_id, category_scores')
+              .eq('period_id', selectedPeriodId)
+              .in('cashier_id', ids)
+          : supabase
+              .from('cashier_period_score')
+              .select('cashier_id, category_scores')
+              .eq('period_id', selectedPeriodId)
+              .in('cashier_id', ids);
+      })
+    );
+    if (detailResults.some(({ error }) => error)) {
       return NextResponse.json({ error: 'Gagal memuat rincian indikator' }, { status: 500 });
     }
 
     const indicatorsByCashier = new Map(
-      (detailRows ?? []).map((detail) => [
-        detail.cashier_id,
-        normalizeIndicatorScores(detail.category_scores),
-      ])
+      detailResults
+        .flatMap(({ data }) => data ?? [])
+        .map((detail) => [detail.cashier_id, normalizeIndicatorScores(detail.category_scores)])
     );
     for (const row of pageRows) {
       row.indicator_scores = indicatorsByCashier.get(row.cashier_id) ?? [];
@@ -374,6 +462,10 @@ async function handleGET(request: Request) {
     return csvResponse(pageRows, selectedPeriodLabel, mode);
   }
 
+  if (internalExcelPage) {
+    return NextResponse.json({ rows: pageRows, nextCursor, hasMore });
+  }
+
   const avatarUrls = await getCashierAvatarUrls(
     supabase,
     pageRows.map((row) => row.avatar_path)
@@ -384,6 +476,10 @@ async function handleGET(request: Request) {
   }));
 
   return NextResponse.json({ rows: responseRows, nextCursor, hasMore });
+}
+
+async function handleGET(request: Request) {
+  return getLeaderboard(request, false);
 }
 
 export const GET = withApiRoute(handleGET);

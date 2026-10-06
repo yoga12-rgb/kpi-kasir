@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.3.0] - 2026-10-06
+
+### Added
+
+- Menambahkan ekspor peringkat ke Excel (`.xlsx`) dengan kolom Nama, Nama Outlet, Akurasi & Ketelitian, Kedisiplinan, Kepatuhan SOP, dan Pelayanan & Upselling. Skor indikator ditampilkan sebagai persentase sesuai filter yang aktif.
+
+### Fixed
+
+- Menerapkan filter cabang saat cakupan leaderboard Per Outlet dipilih tanpa membatasi ke satu outlet, termasuk pada hasil ekspor.
+
 ## [0.2.23] - 2026-08-15
 
 ### Fixed

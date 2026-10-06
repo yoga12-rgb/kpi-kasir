@@ -16,6 +16,29 @@ export interface AppUpdate {
 
 export const appUpdates: AppUpdate[] = [
   {
+    version: '0.3.0',
+    date: '2026-10-06',
+    title: 'Ekspor peringkat ke Excel',
+    summary:
+      'Peringkat kasir kini dapat diekspor sebagai Excel dengan nama, outlet, dan persentase untuk empat indikator penilaian.',
+    sections: [
+      {
+        category: 'added',
+        label: 'Fitur Baru',
+        items: [
+          'Menambahkan ekspor Excel berisi Nama, Nama Outlet, Akurasi & Ketelitian, Kedisiplinan, Kepatuhan SOP, serta Pelayanan & Upselling sesuai filter yang aktif.',
+        ],
+      },
+      {
+        category: 'fixed',
+        label: 'Perbaikan',
+        items: [
+          'Filter cabang pada cakupan Per Outlet kini membatasi hasil peringkat dan ekspor ke cabang yang dipilih.',
+        ],
+      },
+    ],
+  },
+  {
     version: '0.2.23',
     date: '2026-08-15',
     title: 'Perbaikan tata letak filter leaderboard',
