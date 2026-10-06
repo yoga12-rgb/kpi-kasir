@@ -356,7 +356,7 @@ select pg_temp.assert_true(
 );
 
 select pg_temp.assert_true(
-  (select relrowsecurity from pg_class where oid = 'public.mentoring_evidence'::regclass)
+  (select relrowsecurity from pg_class where oid = 'public.mentoring_evidence'::regclass),
   'mentoring evidence harus memakai RLS'
 );
 
