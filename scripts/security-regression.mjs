@@ -48,12 +48,29 @@ const result = spawnSync(
     '-P',
     'pager=off',
   ],
-  { input: sql, encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] },
+  {
+    input: sql,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: 10 * 1024 * 1024,
+  },
 );
+
+if (result.stdout) process.stdout.write(result.stdout);
+if (result.stderr) process.stderr.write(result.stderr);
 
 if (result.error) {
   console.error('Gagal menjalankan psql:', result.error);
   process.exit(1);
+}
+
+if (result.status !== 0 && process.env.GITHUB_ACTIONS === 'true') {
+  const failure = result.stderr?.match(/(?:psql:<stdin>:(\d+):\s*)?ERROR:\s*([^\r\n]*)/);
+  const message = failure?.[2]?.startsWith('SECURITY REGRESSION:')
+    ? failure[2].replaceAll('%', '%25')
+    : 'SQL security regression failed';
+  const location = failure?.[1] ? ` file=supabase/tests/security_regression.sql,line=${failure[1]}` : '';
+  console.error(`::error${location}::${message}`);
 }
 
 process.exit(result.status ?? 1);
